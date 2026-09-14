@@ -1,4 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
+
+/**
+ * @input A JSON request plus optional output paths and overwrite permission.
+ * @output Candidate/receipt data and an all-or-none set of requested files.
+ * @position Palette filesystem adapter; an empty path is invalid, not omitted.
+ */
 import {createHash, randomUUID} from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -341,7 +347,8 @@ export function themePaletteGenerate(
 
   const candidate = paletteSnapshot(result);
   let candidateText = serializePaletteCandidate(candidate);
-  const previewText = options.preview ? renderPalettePreview(candidate) : null;
+  const previewText =
+    options.preview !== undefined ? renderPalettePreview(candidate) : null;
   let receipt = receiptFor(result, candidateText, previewText);
   /** @type {string | null} */
   let output = null;
@@ -355,7 +362,7 @@ export function themePaletteGenerate(
   /** @type {PendingFile[]} */
   const files = [];
 
-  if (options.out) {
+  if (options.out !== undefined) {
     const resolvedOutput = resolveSafe(options.out, cwd, 'palette output path');
     const resolvedReceipt = receiptPathFor(resolvedOutput);
     candidateText = serializeCandidate(candidate, resolvedOutput);
@@ -369,7 +376,7 @@ export function themePaletteGenerate(
     );
   }
 
-  if (options.preview) {
+  if (options.preview !== undefined) {
     if (previewText == null) {
       throw new Error('Palette preview content was not generated.');
     }

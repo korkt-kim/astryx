@@ -1,5 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @input Palette file-adapter options and generation request semantics.
+ * @output Consumer guidance for input validation and explicit output paths.
+ * @position Colocated palette file API documentation.
+ */
 /** @type {import('@astryxdesign/cli/authoring').FunctionDoc} */
 export const doc = {
   type: 'function',
@@ -17,7 +22,9 @@ export const doc = {
     'a candidate, not an adopted theme palette or an accessibility claim. With an output path ' +
     'it writes the candidate and a detached reproducibility receipt, and leaves existing ' +
     'author-owned files untouched unless overwrite is true. Shared stop numbers keep the same ' +
-    'value across layouts, and decimal stops become explicit keys in generated output.',
+    'value across layouts, and decimal stops become explicit keys in generated output. ' +
+    'Config contents follow generateTonalPalette input validation, including recipe and neutralProfile. ' +
+    'An explicitly empty output or preview path is rejected before any files are written.',
   importPath: '@astryxdesign/cli/api',
   signature:
     'themePaletteGenerate(configPath: string, options?: {out?: string, preview?: string, overwrite?: boolean}, ctx?: {cwd?: string}): ThemePaletteGenerateResponse',
@@ -33,12 +40,12 @@ export const doc = {
       name: 'options.out',
       type: 'string',
       description:
-        'Optional candidate JSON destination. A sibling .receipt.json path is derived from it.',
+        'Optional non-empty candidate TypeScript or JSON destination. A sibling .receipt.json path is derived from it.',
     },
     {
       name: 'options.preview',
       type: 'string',
-      description: 'Optional path for a self-contained HTML review artifact.',
+      description: 'Optional non-empty path for a self-contained HTML review artifact.',
     },
     {
       name: 'options.overwrite',
@@ -63,11 +70,11 @@ export const doc = {
     {code: 'ERR_FILE_NOT_FOUND', when: 'the config file does not exist'},
     {
       code: 'ERR_PALETTE_GENERATION',
-      when: 'the request, seed, stop layout, mode, or anchor constraint is invalid',
+      when: 'the request, recipe, seed, profile, stop layout, mode, or anchor constraint is invalid',
     },
     {
       code: 'ERR_PATH_TRAVERSAL',
-      when: 'an input or output path escapes cwd, or output would replace input',
+      when: 'an input or output path is empty or escapes cwd, or output would replace input',
     },
     {code: 'ERR_WRITE_FAILED', when: 'the candidate pair cannot be written'},
   ],

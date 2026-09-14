@@ -1,5 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @input Public palette request types and supported recipe/profile identities.
+ * @output Consumer guidance for generation and invalid input errors.
+ * @position Colocated pure palette API documentation.
+ */
 /** @type {import('@astryxdesign/cli/authoring').FunctionDoc} */
 export const doc = {
   type: 'function',
@@ -18,7 +23,9 @@ export const doc = {
     'The candidate always exposes standalone black and white values for direct theme authoring. ' +
     'Generated TypeScript exports them as `black` and `white`, so they can be assigned directly ' +
     'to semantic theme tokens. Those names are reserved and cannot be used as tonal family IDs. ' +
-    'The default 0–100 layout also repeats them as family endpoints; a custom stop list can omit those repeated endpoints.',
+    'The default 0–100 layout also repeats them as family endpoints; a custom stop list can omit those repeated endpoints. ' +
+    'Optional recipe must be astryx-oklch-v1; an unsupported identity fails rather than falling back. ' +
+    'A valid neutralProfile applies only to neutral families; invalid profiles are rejected even without a neutral family.',
   importPath: '@astryxdesign/cli/api',
   signature:
     'generateTonalPalette(input: TonalPaletteGenerationInput): TonalPaletteCandidate',
@@ -28,7 +35,7 @@ export const doc = {
       name: 'input',
       type: 'TonalPaletteGenerationInput',
       description:
-        'Families and seeds plus optional modes, shared stops, anchors, vibrancy from 0 to 100 (default 50), and neutral profile. Only generate an accent family when one is explicitly requested; clarify whether an ambiguous accent means one theme value or a tonal family.',
+        'Families and seeds plus optional recipe, modes, shared stops, anchors, vibrancy from 0 to 100 (default 50), and neutral profile. Only generate an accent family when one is explicitly requested; clarify whether an ambiguous accent means one theme value or a tonal family.',
       required: true,
     },
   ],
@@ -42,7 +49,7 @@ export const doc = {
   throws: [
     {
       code: 'Error',
-      when: 'the request, family, seed, stop layout, mode, or anchor is invalid',
+      when: 'the request, recipe, family, seed, profile, stop layout, mode, or anchor is invalid',
     },
   ],
   examples: [

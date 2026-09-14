@@ -1,5 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @input Palette CLI arguments and JSON configs in temporary directories.
+ * @output Rendering, input-rejection, and author-file preservation evidence.
+ * @position End-to-end tests for the palette generation command.
+ */
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -116,6 +121,99 @@ describe('astryx theme palette generate', () => {
     expect(status).toBe(0);
     expect(JSON.parse(stdout).data.candidate.stops).toEqual([12.5, 50, 80]);
   });
+
+  it.each(['--out=', '--preview='])(
+    'rejects empty output flag %s without partial writes',
+    async flag => {
+      const {status, stdout, stderr} = await runCli(
+        [
+          '--json',
+          'theme',
+          'palette',
+          'generate',
+          'palette.config.json',
+          '--out',
+          'candidate.ts',
+          '--preview',
+          'preview.html',
+          flag,
+        ],
+        {cwd: temporaryDirectory},
+      );
+      expect(status).toBe(1);
+      expect(JSON.parse(stdout)).toMatchObject({code: 'ERR_PATH_TRAVERSAL'});
+      expect(stderr).toBe('');
+      expect(fs.readdirSync(temporaryDirectory)).toEqual([
+        'palette.config.json',
+      ]);
+    },
+  );
+
+  it.each([
+    {extra: ['extra.json']},
+    {extra: ['--overwrite', 'false']},
+    {extra: ['--overwrite', '0']},
+  ])(
+    'rejects discarded positional input $extra before overwriting',
+    async ({extra}) => {
+      fs.writeFileSync(
+        path.join(temporaryDirectory, 'candidate.ts'),
+        'author edit\n',
+      );
+      const {status, stdout, stderr} = await runCli(
+        [
+          '--json',
+          'theme',
+          'palette',
+          'generate',
+          'palette.config.json',
+          '--out',
+          'candidate.ts',
+          ...extra,
+        ],
+        {cwd: temporaryDirectory},
+      );
+      expect(status).toBe(1);
+      expect(JSON.parse(stdout)).toMatchObject({code: 'ERR_INVALID_ARGUMENT'});
+      expect(stderr).toBe('');
+      expect(
+        fs.readFileSync(path.join(temporaryDirectory, 'candidate.ts'), 'utf8'),
+      ).toBe('author edit\n');
+      expect(fs.readdirSync(temporaryDirectory).sort()).toEqual([
+        'candidate.ts',
+        'palette.config.json',
+      ]);
+    },
+  );
+
+  it.each([{recipe: 'unsupported'}, {neutralProfile: 'typo-v1'}])(
+    'fails invalid config intent %j without writing',
+    async change => {
+      fs.writeFileSync(
+        path.join(temporaryDirectory, 'palette.config.json'),
+        JSON.stringify({families: [{id: 'blue', seed: '#0074e2'}], ...change}),
+      );
+      const {status, stdout} = await runCli(
+        [
+          '--json',
+          'theme',
+          'palette',
+          'generate',
+          'palette.config.json',
+          '--out',
+          'candidate.ts',
+        ],
+        {cwd: temporaryDirectory},
+      );
+      expect(status).toBe(1);
+      expect(JSON.parse(stdout)).toMatchObject({
+        code: 'ERR_PALETTE_GENERATION',
+      });
+      expect(fs.readdirSync(temporaryDirectory)).toEqual([
+        'palette.config.json',
+      ]);
+    },
+  );
 
   it('returns the stable palette-generation error code', async () => {
     fs.writeFileSync(

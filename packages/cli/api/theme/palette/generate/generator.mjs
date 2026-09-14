@@ -1,4 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
+
+/**
+ * @input Palette requests with optional supported recipe and neutral-profile identities.
+ * @output Deterministic candidates and normalized evidence, or explicit input errors.
+ * @position Pure authoring engine; validates identities before generating any family.
+ */
 import {
   hexToOklch,
   luminance,
@@ -566,6 +572,17 @@ export function normalizeGenerationRequest(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new Error('Palette generation config must be an object.');
   }
+  if (input.recipe !== undefined && input.recipe !== PALETTE_RECIPE) {
+    throw new Error(
+      `Unsupported palette recipe: ${String(input.recipe)}. Expected ${PALETTE_RECIPE}.`,
+    );
+  }
+  const neutralProfile = input.neutralProfile ?? 'neutral-v1';
+  if (
+    !['neutral-v1', 'warm-v1', 'cool-v1', 'custom'].includes(neutralProfile)
+  ) {
+    throw new Error(`Unknown neutral profile: ${String(neutralProfile)}`);
+  }
   const families = input.families;
   if (!Array.isArray(families) || families.length === 0) {
     throw new Error('Palette generation requires at least one family.');
@@ -665,7 +682,7 @@ export function normalizeGenerationRequest(input) {
   const request = {
     recipe: PALETTE_RECIPE,
     vibrancy: input.vibrancy ?? 50,
-    neutralProfile: input.neutralProfile ?? 'neutral-v1',
+    neutralProfile,
     modeStrategy,
     stops,
     families: normalizedFamilies,

@@ -18,7 +18,9 @@
  * xds --json theme palette generate <file>  -> theme.palette.generate
  * (file not found / parse error)            -> CLIError
  *
- * @position api — colocated typedefs for api/theme/{theme,build,add,list,template,targets,_adapter}
+ * @input Theme command requests, including an explicit supported palette recipe.
+ * @output Public request/candidate/response typedefs shared with generated declarations.
+ * @position api — colocated typedefs for api/theme/{theme,build,add,list,template,targets,palette,_adapter}
  */
 
 /**
@@ -126,6 +128,8 @@
 
 /**
  * @typedef {object} TonalPaletteGenerationInput
+ * @property {'astryx-oklch-v1'} [recipe] Defaults when omitted; unsupported
+ * explicit recipe identities are rejected rather than silently substituted.
  * @property {TonalPaletteFamilyInput[]} families
  * @property {number} [vibrancy] Chroma control from 0 (most muted) through 50
  * (default) to 100 (most vivid).

@@ -1,5 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @input Palette command argument and file-option contracts.
+ * @output Consumer guidance for paths and presence-only overwrite permission.
+ * @position Colocated palette CLI documentation.
+ */
 /** @type {import('@astryxdesign/cli/authoring').CommandDoc} */
 export const doc = {
   type: 'command',
@@ -18,7 +23,10 @@ export const doc = {
     'Without --out it prints a preview. With --out it writes a candidate file and detached ' +
     'receipt. --preview writes a standardized, self-contained HTML review artifact. ' +
     'TypeScript output is directly importable and contains no generator dependency. ' +
-    'JSON is also supported. Existing author-owned files are left untouched unless --overwrite is explicit.',
+    'JSON is also supported. Output paths must be non-empty and relative to the working directory. ' +
+    'Existing author-owned files are left untouched unless --overwrite is explicit. This is a presence-only flag: ' +
+    'omit it to preserve files, rather than passing a false value. Exactly one config argument is accepted; ' +
+    'extra positional arguments are rejected before generating or writing output.',
   fn: 'themePaletteGenerate',
   args: [{name: 'config', param: 'configPath', required: true}],
   options: [

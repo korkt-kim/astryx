@@ -7,7 +7,13 @@
  * (../../api/theme/build/build.mjs); `list`/`add` delegate to the
  * ../../api/theme/list/list.mjs and ../../api/theme/add/add.mjs leaves. This
  * file only parses options, injects a logger, renders human output, and maps
- * AstryxError → cliError. Watch mode (a human-interactive, long-running loop)
+ * AstryxError → cliError. Palette generation rejects excess positional input
+ * before executing, so a stray value cannot silently authorize an overwrite.
+ * @input CommandDocs, CLI arguments, and matching theme API responses.
+ * @output CLI rendering and explicit theme/palette operations.
+ * @position Thin theme command adapter.
+ *
+ * Watch mode (a human-interactive, long-running loop)
  * stays here because it re-invokes `theme build` as a child process.
  *
  * The command surface (group + subcommand descriptions, args, flags) is sourced
@@ -394,7 +400,7 @@ export function registerTheme(program) {
       );
       return NO_RESULT_SET;
     },
-  });
+  }).allowExcessArguments(false);
 
   defineCommand(theme, themeBuildCommand, {
     fn: themeBuildFn,

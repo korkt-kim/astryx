@@ -1,5 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @input JSON palette requests and explicit file output options.
+ * @output Consumer guidance for scaling modes, normalized receipts, and input errors.
+ * @position Public palette file-adapter reference.
+ */
 /** @type {import('@astryxdesign/cli/authoring').FunctionDoc} */
 export const doc = {
   type: 'function',
@@ -17,7 +22,8 @@ export const doc = {
     'a candidate, not an adopted theme palette or an accessibility claim. With an output path ' +
     'it writes the candidate and a detached reproducibility receipt, and leaves existing ' +
     'author-owned files untouched unless overwrite is true. Shared stop numbers keep the same ' +
-    'value across layouts, and decimal stops become explicit keys in generated output.',
+    'value across layouts, and decimal stops become explicit keys in generated output.' +
+    'Optional darkChromaTaper adjusts dark-mode chroma; see generateTonalPalette for configuration.',
   importPath: '@astryxdesign/cli/api',
   signature:
     'themePaletteGenerate(configPath: string, options?: {out?: string, preview?: string, overwrite?: boolean}, ctx?: {cwd?: string}): ThemePaletteGenerateResponse',
@@ -63,7 +69,7 @@ export const doc = {
     {code: 'ERR_FILE_NOT_FOUND', when: 'the config file does not exist'},
     {
       code: 'ERR_PALETTE_GENERATION',
-      when: 'the request, seed, stop layout, mode, or anchor constraint is invalid',
+      when: 'the request, seed, darkChromaTaper settings, stop layout, mode, or anchor constraint is invalid',
     },
     {
       code: 'ERR_PATH_TRAVERSAL',

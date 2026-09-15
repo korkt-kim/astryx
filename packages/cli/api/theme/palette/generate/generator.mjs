@@ -12,13 +12,14 @@ import {
 
 /** @typedef {import('../../theme.type.mjs').TonalPaletteAnchor} TonalPaletteAnchor */
 /** @typedef {import('../../theme.type.mjs').TonalPaletteGenerationInput} TonalPaletteGenerationInput */
+/** @typedef {import('../../theme.type.mjs').TonalPaletteDarkChromaTaper} TonalPaletteDarkChromaTaper */
 /** @typedef {[number, number, number]} ColorTriple */
 /** @typedef {'light' | 'dark'} PaletteMode */
 /** @typedef {{lightness: number, chroma: number, hue: number}} PolarColor */
 /** @typedef {TonalPaletteAnchor & {color: string, generatedColor: string, deltaE: number}} AnchorResult */
 /** @typedef {{colors: Record<number, string>, diagnostics: Record<string, unknown>}} GeneratedRamp */
 /** @typedef {{id: string, name: string, seed: string, kind: 'chromatic' | 'neutral', anchors: TonalPaletteAnchor[]}} NormalizedFamily */
-/** @typedef {{recipe: typeof PALETTE_RECIPE, vibrancy: number, neutralProfile: string, modeStrategy: string, stops: number[], families: NormalizedFamily[]}} NormalizedRequest */
+/** @typedef {{recipe: typeof PALETTE_RECIPE, vibrancy: number, neutralProfile: string, modeStrategy: string, darkChromaTaper?: TonalPaletteDarkChromaTaper, stops: number[], families: NormalizedFamily[]}} NormalizedRequest */
 /** @typedef {{id: string, name: string, seed: string, light?: GeneratedRamp, dark?: GeneratedRamp}} GeneratedFamily */
 /** @typedef {{recipe: typeof PALETTE_RECIPE, status: 'candidate', request: NormalizedRequest, families: GeneratedFamily[], coordination: Record<string, unknown>[], errors: {familyId: string, message: string}[]}} PaletteGenerationResult */
 
@@ -196,6 +197,7 @@ function anchorPolarAtStop(seed, anchors, stop) {
  * @param {PaletteMode} mode
  * @param {number} vibrancy
  * @param {boolean} coordinateWithOtherFamilies
+ * @param {number} chromaMultiplier
  */
 function generateCandidate(
   source,
@@ -203,6 +205,7 @@ function generateCandidate(
   mode,
   vibrancy,
   coordinateWithOtherFamilies,
+  chromaMultiplier,
 ) {
   const adjustedTone = tone;
   const adjustedHue = toneAdjustedHue(source.hue, adjustedTone);
@@ -217,9 +220,14 @@ function generateCandidate(
     toneChromaEnvelope(adjustedTone) *
     (mode === 'dark' ? DARK_CHROMA_FACTOR : 1);
   const lightness = toneToOklabLightness(adjustedTone);
+  const maximumChroma = maxOklchChroma(adjustedHue, lightness);
+  const taperedChroma =
+    chromaMultiplier === 1
+      ? chroma
+      : Math.min(chroma, maximumChroma) * chromaMultiplier;
   return {
-    hex: oklchClampedHex(lightness, chroma, adjustedHue),
-    gamutMapped: chroma > maxOklchChroma(adjustedHue, lightness) + 0.000001,
+    hex: oklchClampedHex(lightness, taperedChroma, adjustedHue),
+    gamutMapped: chroma > maximumChroma + 0.000001,
   };
 }
 
@@ -450,6 +458,34 @@ function buildDiagnostics(colors, stops, sourceHue, gamutMappedStops, anchors) {
   };
 }
 
+/** @param {NormalizedRequest} request @param {NormalizedFamily} family @param {PaletteMode} mode @param {number} stop */
+function darkChromaMultiplier(request, family, mode, stop) {
+  if (
+    !request.darkChromaTaper ||
+    mode !== 'dark' ||
+    family.kind === 'neutral' ||
+    stop <= 0 ||
+    stop >= 100
+  )
+    return 1;
+
+  const {familyMultipliers, edgeMultiplier, throughStop, recoverAtStop} =
+    request.darkChromaTaper;
+  const edge =
+    familyMultipliers && Object.hasOwn(familyMultipliers, family.id)
+      ? familyMultipliers[family.id]
+      : edgeMultiplier;
+
+  // Normalization rejects one-sided pairs; absent boundaries mean full-ramp scaling.
+  if (throughStop === undefined || recoverAtStop === undefined) return edge;
+  if (stop >= recoverAtStop) return 1;
+  return (
+    edge +
+    (1 - edge) *
+      smoothstep((stop - throughStop) / (recoverAtStop - throughStop))
+  );
+}
+
 /** @param {NormalizedRequest} request @param {NormalizedFamily} family @param {PaletteMode} mode @returns {GeneratedRamp} */
 function generateRamp(request, family, mode) {
   const seedHex = normalizeColor(family.seed);
@@ -468,6 +504,7 @@ function generateRamp(request, family, mode) {
     mode,
     request.vibrancy,
     family.kind !== 'neutral',
+    darkChromaMultiplier(request, family, mode, 50),
   ).hex;
   for (const stop of request.stops) {
     const source = anchorPolarAtStop(seed, anchors, stop);
@@ -477,6 +514,7 @@ function generateRamp(request, family, mode) {
       mode,
       request.vibrancy,
       family.kind !== 'neutral',
+      darkChromaMultiplier(request, family, mode, stop),
     );
     colors[stop] = generated.hex;
     if (generated.gamutMapped) gamutMappedStops.push(stop);
@@ -559,6 +597,76 @@ function buildCoordinationDiagnostics(request, families) {
           : null,
     };
   });
+}
+
+/** @param {TonalPaletteDarkChromaTaper} darkChromaTaper @param {NormalizedFamily[]} families @returns {TonalPaletteDarkChromaTaper} */
+function normalizeDarkChromaTaper(darkChromaTaper, families) {
+  if (
+    !darkChromaTaper ||
+    typeof darkChromaTaper !== 'object' ||
+    Array.isArray(darkChromaTaper)
+  ) {
+    throw new Error('darkChromaTaper must be an object.');
+  }
+  const {edgeMultiplier, throughStop, recoverAtStop, familyMultipliers} =
+    darkChromaTaper;
+  /** @param {number} value @param {string} label */
+  const assertMultiplier = (value, label) => {
+    if (!Number.isFinite(value) || value < 0 || value > 1) {
+      throw new Error(
+        `darkChromaTaper.${label} must be a finite number from 0 to 1.`,
+      );
+    }
+  };
+  assertMultiplier(edgeMultiplier, 'edgeMultiplier');
+  if ((throughStop === undefined) !== (recoverAtStop === undefined)) {
+    throw new Error(
+      'darkChromaTaper.throughStop and recoverAtStop must be provided together; omit both to scale the full dark ramp.',
+    );
+  }
+  if (
+    throughStop !== undefined &&
+    recoverAtStop !== undefined &&
+    (!Number.isFinite(throughStop) ||
+      !Number.isFinite(recoverAtStop) ||
+      throughStop < 0 ||
+      throughStop >= recoverAtStop ||
+      recoverAtStop > 100)
+  ) {
+    throw new Error(
+      'darkChromaTaper requires finite stops with 0 <= throughStop < recoverAtStop <= 100.',
+    );
+  }
+  /** @type {TonalPaletteDarkChromaTaper} */
+  const normalized =
+    throughStop === undefined || recoverAtStop === undefined
+      ? {edgeMultiplier}
+      : {edgeMultiplier, throughStop, recoverAtStop};
+  if (familyMultipliers !== undefined) {
+    if (
+      typeof familyMultipliers !== 'object' ||
+      Array.isArray(familyMultipliers)
+    ) {
+      throw new Error('darkChromaTaper.familyMultipliers must be an object.');
+    }
+    const chromaticIds = new Set(
+      families
+        .filter(family => family.kind === 'chromatic')
+        .map(family => family.id),
+    );
+    normalized.familyMultipliers = Object.fromEntries(
+      Object.entries(familyMultipliers).map(([id, multiplier]) => {
+        if (!chromaticIds.has(id)) {
+          throw new Error(
+            `darkChromaTaper.familyMultipliers.${id} must name a requested chromatic family.`,
+          );
+        }
+        assertMultiplier(multiplier, `familyMultipliers.${id}`);
+        return [id, multiplier];
+      }),
+    );
+  }
+  return normalized;
 }
 
 /** @param {TonalPaletteGenerationInput} input @returns {NormalizedRequest} */
@@ -667,6 +775,14 @@ export function normalizeGenerationRequest(input) {
     vibrancy: input.vibrancy ?? 50,
     neutralProfile: input.neutralProfile ?? 'neutral-v1',
     modeStrategy,
+    ...(input.darkChromaTaper === undefined
+      ? {}
+      : {
+          darkChromaTaper: normalizeDarkChromaTaper(
+            input.darkChromaTaper,
+            normalizedFamilies,
+          ),
+        }),
     stops,
     families: normalizedFamilies,
   };

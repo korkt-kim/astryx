@@ -2,8 +2,9 @@
 
 /**
  * @file Colocated types for the `theme` command — the source of truth for its
- * build/list/add JSON response shapes. The leaves' `@returns` reference these
- * directly (functions own their types); the public `@astryxdesign/cli/api`
+ * build/list/add JSON response shapes and palette generation inputs. Recovery
+ * boundary pairing is validated at runtime. The leaves' `@returns` reference
+ * these directly (functions own their types); the public `@astryxdesign/cli/api`
  * surface re-exports them via types/theme.d.ts, so consumers see the same names.
  *
  * Invocation                                 -> type discriminator
@@ -125,12 +126,28 @@
  */
 
 /**
+ * Scales dark chromatic ramps. Omit both recovery boundaries to scale
+ * the full ramp; otherwise supply both.
+ * @typedef {object} TonalPaletteDarkChromaTaper
+ * @property {number} edgeMultiplier Finite realized-chroma multiplier in [0, 1].
+ * @property {number} [throughStop] Last tone coordinate receiving the full edge
+ * multiplier. Must satisfy 0 <= throughStop < recoverAtStop <= 100.
+ * @property {number} [recoverAtStop] Tone coordinate at which smoothstep recovery
+ * reaches the untapered base recipe. Boundaries need not appear in `stops`.
+ * @property {Record<string, number>} [familyMultipliers] Replacement edge
+ * multipliers in [0, 1], keyed by requested chromatic family IDs, not names.
+ */
+
+/**
  * @typedef {object} TonalPaletteGenerationInput
  * @property {TonalPaletteFamilyInput[]} families
  * @property {number} [vibrancy] Chroma control from 0 (most muted) through 50
  * (default) to 100 (most vivid).
  * @property {'neutral-v1' | 'warm-v1' | 'cool-v1' | 'custom'} [neutralProfile]
  * @property {'light-only' | 'dark-only' | 'light-and-dark'} [modeStrategy]
+ * @property {TonalPaletteDarkChromaTaper} [darkChromaTaper] Opt-in taper of dark
+ * chromatic base ramps only. Omission preserves the untapered recipe; light
+ * and neutral ramps are unaffected. The normalized receipt records this input.
  * @property {number[]} [stops] Ordered stops shared by every requested family;
  * defaults to 0 through 100 in increments of 5. Decimal stops are supported,
  * and authors may omit the repeated black and white endpoints.

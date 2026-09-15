@@ -28,7 +28,7 @@ export const doc = {
       name: 'input',
       type: 'TonalPaletteGenerationInput',
       description:
-        'Families and seeds plus optional modes, shared stops, anchors, vibrancy from 0 to 100 (default 50), and neutral profile. Only generate an accent family when one is explicitly requested; clarify whether an ambiguous accent means one theme value or a tonal family.',
+        'Families and seeds plus optional modes, shared stops, anchors, vibrancy from 0 to 100 (default 50), neutral profile, and darkChromaTaper. Only generate an accent family when one is explicitly requested; clarify whether an ambiguous accent means one theme value or a tonal family.',
       required: true,
     },
   ],
@@ -42,7 +42,7 @@ export const doc = {
   throws: [
     {
       code: 'Error',
-      when: 'the request, family, seed, stop layout, mode, or anchor is invalid',
+      when: 'the request, family, seed, darkChromaTaper settings, stop layout, mode, or anchor is invalid',
     },
   ],
   examples: [
@@ -65,6 +65,14 @@ export const doc = {
     {
       label: 'Generate an optional accent family',
       code: "generateTonalPalette({families: [{id: 'accent', seed: '#ff4db8'}]});",
+    },
+    {
+      label: 'Scale the entire dark base ramp',
+      code: "generateTonalPalette({darkChromaTaper: {edgeMultiplier: 0.5}, families: [{id: 'blue', seed: '#0074e2'}]});",
+    },
+    {
+      label: 'Limit dark scaling to lower tones with explicit recovery',
+      code: "generateTonalPalette({darkChromaTaper: {edgeMultiplier: 0.5, throughStop: 25, recoverAtStop: 60}, families: [{id: 'blue', seed: '#0074e2'}]});",
     },
     {
       label: 'Generate an explicit intermediate stop',

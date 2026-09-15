@@ -15,6 +15,7 @@ export const doc = {
     'and white values remain available in every candidate. ' +
     'For anchors, exact preserves the chosen color at its mode and stop; bounded allows ' +
     'movement within maxDeltaE; flexible uses the color as guidance. ' +
+    'Optional darkChromaTaper adjusts chroma in dark chromatic ramps while leaving light and neutral ramps unchanged. ' +
     'Without --out it prints a preview. With --out it writes a candidate file and detached ' +
     'receipt. --preview writes a standardized, self-contained HTML review artifact. ' +
     'TypeScript output is directly importable and contains no generator dependency. ' +

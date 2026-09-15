@@ -1,11 +1,15 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @input Palette requests with optional full-ramp or bounded dark chroma scaling.
+ * @output Regression coverage for candidate generation and palette invariants.
+ * @position Colocated tests for the tonal palette generator.
+ */
 import {createHash} from 'node:crypto';
 import {describe, expect, it} from 'vitest';
 import {
   COMPACT_11_STOPS,
   DEFAULT_21_STOPS,
-  PALETTE_RECIPE,
   generatePaletteSet,
   generateTonalPalette,
   perceptualDelta,
@@ -87,6 +91,76 @@ describe('astryx-oklch-v1 palette generator', () => {
         ],
       }),
     ).toBe('873821574fdbe3357304dbc06986bd2e5ec88af80d0f36305626fd826c3cf07b');
+  });
+
+  it('scales the full dark ramp with only edgeMultiplier', () => {
+    const request = {families, vibrancy: 100, stops: [0, 25, 60, 80, 100]};
+    const baseline = generateTonalPalette(request);
+    const scaled = generateTonalPalette({
+      ...request,
+      darkChromaTaper: {edgeMultiplier: 0.5},
+    });
+
+    expect(scaled.palette.neutral).toEqual(baseline.palette.neutral);
+    for (const id of ['blue', 'orange']) {
+      expect(scaled.palette[id].light).toEqual(baseline.palette[id].light);
+      for (const stop of [0, 100]) {
+        expect(scaled.palette[id].dark[stop]).toBe(
+          baseline.palette[id].dark[stop],
+        );
+      }
+      for (const stop of [25, 60, 80]) {
+        const baseChroma = hexToOklch(baseline.palette[id].dark[stop]).C;
+        const scaledChroma = hexToOklch(scaled.palette[id].dark[stop]).C;
+
+        expect(Math.abs(scaledChroma - baseChroma * 0.5)).toBeLessThan(0.001);
+      }
+    }
+  });
+
+  it('reduces dark chroma with explicit recovery', () => {
+    const request = {families, vibrancy: 100, stops: [0, 25, 60, 80, 100]};
+    const baseline = generateTonalPalette(request);
+    const tapered = generateTonalPalette({
+      ...request,
+      darkChromaTaper: {
+        edgeMultiplier: 0.5,
+        throughStop: 25,
+        recoverAtStop: 60,
+      },
+    });
+
+    expect(tapered.palette.neutral).toEqual(baseline.palette.neutral);
+    for (const id of ['blue', 'orange']) {
+      expect(tapered.palette[id].light).toEqual(baseline.palette[id].light);
+      for (const stop of [0, 60, 80, 100]) {
+        expect(tapered.palette[id].dark[stop]).toBe(
+          baseline.palette[id].dark[stop],
+        );
+      }
+      const baseChroma = hexToOklch(baseline.palette[id].dark[25]).C;
+      const taperedChroma = hexToOklch(tapered.palette[id].dark[25]).C;
+
+      expect(Math.abs(taperedChroma - baseChroma * 0.5)).toBeLessThan(0.001);
+    }
+  });
+
+  it('rejects malformed darkChromaTaper', () => {
+    expect(() =>
+      generateTonalPalette({
+        families: [families[1]],
+        darkChromaTaper: [],
+      }),
+    ).toThrow('darkChromaTaper must be an object');
+
+    expect(() =>
+      generateTonalPalette({
+        families: [families[1]],
+        darkChromaTaper: {},
+      }),
+    ).toThrow(
+      'darkChromaTaper.edgeMultiplier must be a finite number from 0 to 1',
+    );
   });
 
   it('defaults to 21 stops while allowing authors to omit endpoints', () => {

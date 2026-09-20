@@ -1,0 +1,134 @@
+
+ RUN  v4.1.10 <repo>
+
+Built pseudo.json — 366 keys
+Built pseudo.json — 366 keys
+ ❯  ui  packages/core/src/Slider/Slider.test.tsx (68 tests | 3 failed) 1703ms
+     ✓ single thumb takes its accessible name from the label 130ms
+     ✓ range thumbs have individual names composing with the group label 29ms
+     ✓ sets aria-valuetext with formatValue 18ms
+     ✓ uses custom min and max 17ms
+     ✓ clamps a controlled value of 150 to 100 16ms
+     ✓ clamps a controlled value of -50 to +0 16ms
+     ✓ insets the thumb at value +0 so it stays in bounds 15ms
+     ✓ insets the thumb at value 50 so it stays in bounds 17ms
+     ✓ insets the thumb at value 100 so it stays in bounds 17ms
+     ✓ insets a vertical thumb at value +0 so it stays in bounds 16ms
+     ✓ insets a vertical thumb at value 100 so it stays in bounds 15ms
+     ✓ range mode sets correct aria values on both thumbs 22ms
+     ✓ range thumb bounds update after moving a thumb 34ms
+     ✓ range thumb bounds include the minStepsBetweenThumbs gap 22ms
+     ✓ single mode renders the label as a group label naming the thumb 17ms
+     ✓ range mode labels the slider group via aria-labelledby 14ms
+     ✓ sets aria-orientation for vertical 14ms
+     ✓ sets aria-invalid when status type is error 27ms
+     ✓ associates description via aria-describedby 16ms
+     ✓ associates status message via aria-describedby 15ms
+     ✓ decorative track elements have aria-hidden 2ms
+     ✓ conveys required state through the accessible description 26ms
+     ✓ conveys required state on both thumbs of a range slider 34ms
+     ✓ combines required with other describedby parts in the description 27ms
+     ✓ does not mention required without isRequired 24ms
+     ✓ disables thumbs when isDisabled is true 14ms
+     ✓ does not fire onChange on pointer down when disabled 15ms
+     ✓ does not fire onChange on keyboard when disabled 14ms
+     ✓ fires onChangeEnd on keyboard ArrowRight 19ms
+     ✓ emits exact decimal values for fractional steps on keyboard 18ms
+     ✓ emits exact decimal values for fractional steps in range mode 25ms
+     ✓ fires onChangeEnd on keyboard Home/End with correct value 21ms
+     × moves between max and the adjacent step for 0~100 with step 3 23ms
+     ✓ fires onChangeEnd with correct value for range mode on keyboard 24ms
+     × keeps range separation when selecting an off-grid maximum 26ms
+     × selects the maximum by dragging with step 3 15ms
+     ✓ fires onChangeEnd on pointer up after pointer down 17ms
+     ✓ focuses closest thumb on track click 19ms
+     ✓ maps a track click to the LTR value in the default direction 13ms
+     ✓ mirrors a track click to the RTL value when the track is rtl 14ms
+     ✓ clicking a mark label snaps to that mark value, not pointer position 3ms
+     ✓ clamps value at max boundary 19ms
+     ✓ clamps value at min boundary 20ms
+       ✓ shows the reason tooltip on hover when disabled with a reason  330ms
+       ✓ shows the reason tooltip on keyboard focus 34ms
+       ✓ does not render a tooltip when not disabled 2ms
+       ✓ does not render a tooltip when disabled without a reason 1ms
+       ✓ keeps the thumb focusable via aria-disabled when a reason is provided 12ms
+       ✓ links the reason tooltip via aria-describedby 14ms
+       ✓ blocks value changes while focusable-disabled 17ms
+       ✓ remains non-focusable when disabled without a reason 12ms
+       ✓ submits the value under htmlName 4ms
+       ✓ submits both range values under the same name 2ms
+       ✓ is excluded from form data when disabled 2ms
+       ✓ rings when the thumb is reached with the keyboard 33ms
+       ✓ does not ring when the thumb is grabbed with the mouse 17ms
+       ✓ drops the ring when the mouse grabs a thumb that already had it 31ms
+       ✓ brings the ring back when an arrow key follows a mouse drag 16ms
+       ✓ leaves the ring off for a modifier chord after a mouse drag 17ms
+       ✓ leaves the ring off for a bare Shift press after a mouse drag 17ms
+       ✓ leaves the ring off for Meta and its chord after bare Shift 15ms
+       ✓ leaves the ring off for Alt and its chord after bare Shift 16ms
+       ✓ leaves the ring off for Control and its chord after bare Shift 15ms
+       ✓ restores the ring and changes value for Shift+Arrow after bare Shift 15ms
+       ✓ preserves an existing keyboard ring when Shift is pressed 29ms
+       ✓ rings when Shift+Tab returns to a mouse-focused thumb 47ms
+       ✓ drops the ring on blur 31ms
+       ✓ rings the range thumb the keyboard reached, not its sibling 52ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL   ui  packages/core/src/Slider/Slider.test.tsx > Slider > moves between max and the adjacent step for 0~100 with step 3
+Error: expect(element).toHaveAttribute("aria-valuenow", "100") // element.getAttribute("aria-valuenow") === "100"
+
+Expected the element to have attribute:
+  aria-valuenow="100"
+Received:
+  aria-valuenow="99"
+ ❯ packages/core/src/Slider/Slider.test.tsx:539:20
+    537|     await user.keyboard('{End}');
+    538|
+    539|     expect(slider).toHaveAttribute('aria-valuenow', String(100));
+       |                    ^
+    540|     expect(handleChange).toHaveBeenLastCalledWith(100);
+    541|     expect(handleChangeEnd).toHaveBeenLastCalledWith(100);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL   ui  packages/core/src/Slider/Slider.test.tsx > Slider > keeps range separation when selecting an off-grid maximum
+Error: expect(element).toHaveAttribute("aria-valuenow", "100") // element.getAttribute("aria-valuenow") === "100"
+
+Expected the element to have attribute:
+  aria-valuenow="100"
+Received:
+  aria-valuenow="99"
+ ❯ packages/core/src/Slider/Slider.test.tsx:597:19
+    595|     act(() => upper.focus());
+    596|     await user.keyboard('{End}');
+    597|     expect(upper).toHaveAttribute('aria-valuenow', '100');
+       |                   ^
+    598|     expect(handleChangeEnd).toHaveBeenLastCalledWith([0, 100]);
+    599|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL   ui  packages/core/src/Slider/Slider.test.tsx > Slider > selects the maximum by dragging with step 3
+Error: expect(element).toHaveAttribute("aria-valuenow", "100") // element.getAttribute("aria-valuenow") === "100"
+
+Expected the element to have attribute:
+  aria-valuenow="100"
+Received:
+  aria-valuenow="99"
+ ❯ packages/core/src/Slider/Slider.test.tsx:642:20
+    640|     fireEvent.pointerMove(track, {clientX: 200, clientY: 10, pointerId…
+    641|     fireEvent.pointerUp(track, {pointerId: 1});
+    642|     expect(slider).toHaveAttribute('aria-valuenow', '100');
+       |                    ^
+    643|     expect(handleChangeEnd).toHaveBeenLastCalledWith(100);
+    644|     fireEvent.pointerDown(track, {clientX: 10, clientY: 10, pointerId:…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 65 passed (68)
+   Start at  03:48:19
+   Duration  4.37s (transform 1.49s, setup 140ms, import 1.68s, tests 1.70s, environment 423ms)
+

@@ -1,0 +1,117 @@
+
+ RUN  v4.1.10 <repo>
+
+Built pseudo.json — 366 keys
+Built pseudo.json — 366 keys
+ ❯  ui  packages/core/src/Slider/Slider.test.tsx (68 tests | 2 failed) 2034ms
+     ✓ single thumb takes its accessible name from the label 139ms
+     ✓ range thumbs have individual names composing with the group label 36ms
+     ✓ sets aria-valuetext with formatValue 21ms
+     ✓ uses custom min and max 19ms
+     ✓ clamps a controlled value of 150 to 100 18ms
+     ✓ clamps a controlled value of -50 to +0 16ms
+     ✓ insets the thumb at value +0 so it stays in bounds 17ms
+     ✓ insets the thumb at value 50 so it stays in bounds 17ms
+     ✓ insets the thumb at value 100 so it stays in bounds 17ms
+     ✓ insets a vertical thumb at value +0 so it stays in bounds 16ms
+     ✓ insets a vertical thumb at value 100 so it stays in bounds 17ms
+     ✓ range mode sets correct aria values on both thumbs 22ms
+     ✓ range thumb bounds update after moving a thumb 32ms
+     ✓ range thumb bounds include the minStepsBetweenThumbs gap 22ms
+     ✓ single mode renders the label as a group label naming the thumb 20ms
+     ✓ range mode labels the slider group via aria-labelledby 20ms
+     ✓ sets aria-orientation for vertical 15ms
+     ✓ sets aria-invalid when status type is error 31ms
+     ✓ associates description via aria-describedby 19ms
+     ✓ associates status message via aria-describedby 17ms
+     ✓ decorative track elements have aria-hidden 2ms
+     ✓ conveys required state through the accessible description 29ms
+     ✓ conveys required state on both thumbs of a range slider 40ms
+     ✓ combines required with other describedby parts in the description 29ms
+     ✓ does not mention required without isRequired 25ms
+     ✓ disables thumbs when isDisabled is true 16ms
+     ✓ does not fire onChange on pointer down when disabled 17ms
+     ✓ does not fire onChange on keyboard when disabled 15ms
+     ✓ fires onChangeEnd on keyboard ArrowRight 23ms
+     ✓ emits exact decimal values for fractional steps on keyboard 22ms
+     ✓ emits exact decimal values for fractional steps in range mode 28ms
+     ✓ fires onChangeEnd on keyboard Home/End with correct value 21ms
+     × moves between max and the adjacent step for 0~100 with step 3 31ms
+     ✓ fires onChangeEnd with correct value for range mode on keyboard 27ms
+     × keeps range separation when selecting an off-grid maximum 33ms
+     ✓ selects the maximum by dragging with step 3 37ms
+     ✓ fires onChangeEnd on pointer up after pointer down 18ms
+     ✓ focuses closest thumb on track click 17ms
+     ✓ maps a track click to the LTR value in the default direction 16ms
+     ✓ mirrors a track click to the RTL value when the track is rtl 14ms
+     ✓ clicking a mark label snaps to that mark value, not pointer position 4ms
+     ✓ clamps value at max boundary 20ms
+     ✓ clamps value at min boundary 22ms
+       ✓ shows the reason tooltip on hover when disabled with a reason  332ms
+       ✓ shows the reason tooltip on keyboard focus 36ms
+       ✓ does not render a tooltip when not disabled 2ms
+       ✓ does not render a tooltip when disabled without a reason 1ms
+       ✓ keeps the thumb focusable via aria-disabled when a reason is provided 15ms
+       ✓ links the reason tooltip via aria-describedby 15ms
+       ✓ blocks value changes while focusable-disabled 20ms
+       ✓ remains non-focusable when disabled without a reason 12ms
+       ✓ submits the value under htmlName 4ms
+       ✓ submits both range values under the same name 3ms
+       ✓ is excluded from form data when disabled 2ms
+       ✓ rings when the thumb is reached with the keyboard 40ms
+       ✓ does not ring when the thumb is grabbed with the mouse 21ms
+       ✓ drops the ring when the mouse grabs a thumb that already had it 40ms
+       ✓ brings the ring back when an arrow key follows a mouse drag 18ms
+       ✓ leaves the ring off for a modifier chord after a mouse drag 18ms
+       ✓ leaves the ring off for a bare Shift press after a mouse drag 18ms
+       ✓ leaves the ring off for Meta and its chord after bare Shift 17ms
+       ✓ leaves the ring off for Alt and its chord after bare Shift 18ms
+       ✓ leaves the ring off for Control and its chord after bare Shift 20ms
+       ✓ restores the ring and changes value for Shift+Arrow after bare Shift 123ms
+       ✓ preserves an existing keyboard ring when Shift is pressed 55ms
+       ✓ rings when Shift+Tab returns to a mouse-focused thumb 58ms
+       ✓ drops the ring on blur 37ms
+       ✓ rings the range thumb the keyboard reached, not its sibling 64ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL   ui  packages/core/src/Slider/Slider.test.tsx > Slider > moves between max and the adjacent step for 0~100 with step 3
+Error: expect(element).toHaveAttribute("aria-valuenow", "99") // element.getAttribute("aria-valuenow") === "99"
+
+Expected the element to have attribute:
+  aria-valuenow="99"
+Received:
+  aria-valuenow="96"
+ ❯ packages/core/src/Slider/Slider.test.tsx:544:20
+    542|
+    543|     await user.keyboard('{ArrowLeft}');
+    544|     expect(slider).toHaveAttribute('aria-valuenow', String(99));
+       |                    ^
+    545|     expect(handleChange).toHaveBeenLastCalledWith(99);
+    546|     expect(handleChangeEnd).toHaveBeenLastCalledWith(99);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL   ui  packages/core/src/Slider/Slider.test.tsx > Slider > keeps range separation when selecting an off-grid maximum
+Error: expect(element).toHaveAttribute("aria-valuenow", "99") // element.getAttribute("aria-valuenow") === "99"
+
+Expected the element to have attribute:
+  aria-valuenow="99"
+Received:
+  aria-valuenow="96"
+ ❯ packages/core/src/Slider/Slider.test.tsx:601:19
+    599|
+    600|     await user.keyboard('{ArrowLeft}');
+    601|     expect(upper).toHaveAttribute('aria-valuenow', '99');
+       |                   ^
+    602|     expect(handleChangeEnd).toHaveBeenLastCalledWith([0, 99]);
+    603|     await user.keyboard('{ArrowRight}');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 66 passed (68)
+   Start at  03:54:15
+   Duration  4.91s (transform 1.63s, setup 165ms, import 1.82s, tests 2.03s, environment 482ms)
+

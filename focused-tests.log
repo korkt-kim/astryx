@@ -1,0 +1,13 @@
+
+ RUN  v4.1.10 <repo>
+
+Built pseudo.json — 366 keys
+Built pseudo.json — 366 keys
+ ✓  ui  packages/core/src/Slider/Slider.test.tsx (68 tests) 1938ms
+       ✓ shows the reason tooltip on hover when disabled with a reason  333ms
+
+ Test Files  1 passed (1)
+      Tests  68 passed (68)
+   Start at  03:47:03
+   Duration  5.03s (transform 1.69s, setup 170ms, import 1.88s, tests 1.94s, environment 526ms)
+

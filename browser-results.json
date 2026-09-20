@@ -1,0 +1,142 @@
+{
+  "browser": "153.0.8010.50",
+  "viewport": {
+    "width": 960,
+    "height": 480
+  },
+  "capturedAt": "2026-09-20T18:52:03.961Z",
+  "runs": [
+    {
+      "name": "before",
+      "url": "https://facebook.github.io/astryx/storybook/iframe.html?id=core-slider--custom-step&viewMode=story&args=step:3",
+      "observations": [
+        {
+          "action": "End",
+          "value": "99",
+          "min": "0",
+          "max": "100"
+        },
+        {
+          "action": "ArrowLeft",
+          "value": "96",
+          "min": "0",
+          "max": "100"
+        },
+        {
+          "action": "ArrowRight",
+          "value": "99",
+          "min": "0",
+          "max": "100"
+        },
+        {
+          "action": "Home",
+          "value": "0",
+          "min": "0",
+          "max": "100"
+        },
+        {
+          "action": "Drag to right endpoint",
+          "value": "99",
+          "min": "0",
+          "max": "100"
+        }
+      ],
+      "representative": [
+        {
+          "case": "aligned step 10",
+          "min": "0",
+          "max": "100",
+          "end": "100",
+          "left": "90"
+        },
+        {
+          "case": "off-grid endpoint already reachable with step 6",
+          "min": "0",
+          "max": "100",
+          "end": "100",
+          "left": "96"
+        },
+        {
+          "case": "offset minimum, aligned step 3",
+          "min": "1",
+          "max": "100",
+          "end": "100",
+          "left": "97"
+        },
+        {
+          "case": "off-grid negative minimum",
+          "min": "-1",
+          "max": "100",
+          "end": "100",
+          "left": "98"
+        }
+      ]
+    },
+    {
+      "name": "after",
+      "url": "http://localhost:6007/iframe.html?id=core-slider--custom-step&viewMode=story&args=step:3",
+      "observations": [
+        {
+          "action": "End",
+          "value": "100",
+          "min": "0",
+          "max": "100"
+        },
+        {
+          "action": "ArrowLeft",
+          "value": "99",
+          "min": "0",
+          "max": "100"
+        },
+        {
+          "action": "ArrowRight",
+          "value": "100",
+          "min": "0",
+          "max": "100"
+        },
+        {
+          "action": "Home",
+          "value": "0",
+          "min": "0",
+          "max": "100"
+        },
+        {
+          "action": "Drag to right endpoint",
+          "value": "100",
+          "min": "0",
+          "max": "100"
+        }
+      ],
+      "representative": [
+        {
+          "case": "aligned step 10",
+          "min": "0",
+          "max": "100",
+          "end": "100",
+          "left": "90"
+        },
+        {
+          "case": "off-grid endpoint already reachable with step 6",
+          "min": "0",
+          "max": "100",
+          "end": "100",
+          "left": "96"
+        },
+        {
+          "case": "offset minimum, aligned step 3",
+          "min": "1",
+          "max": "100",
+          "end": "100",
+          "left": "97"
+        },
+        {
+          "case": "off-grid negative minimum",
+          "min": "-1",
+          "max": "100",
+          "end": "100",
+          "left": "98"
+        }
+      ]
+    }
+  ]
+}

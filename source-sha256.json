@@ -1,0 +1,5 @@
+{
+  ".changeset/slider-step-endpoints.md": "4dbcb7fd0ed3cecc21d391360f7ff03fad053149fb7b1203a36baa6db4ba4e1e",
+  "packages/core/src/Slider/Slider.tsx": "0a44c9cfc0a13f68ddb0e0b6014241ab112452e8a23c413bad78ee8f921725b3",
+  "packages/core/src/Slider/Slider.test.tsx": "6622f4332e4bf99323e06c516cd9e1b2015a9274f0c7777179d8b0f5a5be2613"
+}

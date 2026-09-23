@@ -2,8 +2,8 @@
 
 /**
  * @input Workspace source entries, Storybook's Vite config, Astryx StyleX plugin.
- * @output Storybook config with Vite and StyleX aliases from one package table.
- * @position Storybook configuration; keeps workspace packages usable unbuilt.
+ * @output Storybook config with source aliases and an experimental workspace-wide RDT setup.
+ * @position Storybook configuration; keeps workspace packages usable unbuilt while probing docgen and HMR.
  */
 
 import type {StorybookConfig} from '@storybook/react-vite';
@@ -138,6 +138,19 @@ const config: StorybookConfig = {
     options: {},
   },
   docs: {defaultName: 'Docs'},
+  // POC only: evaluate RDT correctness and HMR cost before a shared rollout.
+  typescript: {
+    reactDocgen: 'react-docgen-typescript',
+    reactDocgenTypescriptOptions: {
+      // Explicit options preserve Controls inference when replacing this object.
+      shouldExtractLiteralValuesFromEnum: true,
+      shouldRemoveUndefinedFromOptional: true,
+      skipChildrenPropWithoutDoc: false,
+      tsconfigPath: path.join(__dirname, 'tsconfig.docgen.json'),
+      // Excluded TSX does not fall back to react-docgen. Cover all workspace sources.
+      include: [`${rootDir.replaceAll(path.sep, '/')}/packages/*/src/**/*.tsx`],
+    },
+  },
   viteFinal: async config => {
     const filteredPlugins =
       config.plugins?.filter(

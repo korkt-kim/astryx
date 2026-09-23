@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.json",
+  "include": [
+    "./preview.tsx",
+    "../../../packages/*/src/**/*.ts",
+    "../../../packages/*/src/**/*.tsx"
+  ],
+  "exclude": [
+    "../../../node_modules",
+    "../../../packages/**/*.test.*",
+    "../../../packages/**/*.stories.*"
+  ]
+}

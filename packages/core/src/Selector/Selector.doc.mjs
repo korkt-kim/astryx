@@ -324,7 +324,7 @@ export const docs = {
       name: 'renderValue',
       type: '(option: SelectorOptionData) => ReactNode',
       description:
-        'Custom render function for the selected option inside the closed trigger. The trigger is sized by padding, so it is the size token for a one-line value (28/32/36) and exactly one text line taller for a two-line one (48/52/56), always on the 4px rhythm, always aligned with the buttons and inputs beside it. Inside an InputGroup the group owns the row height: a SelectorOption folds onto one line and ellipsizes, and any taller node is cut off at the row.',
+        'Custom render function for the selected option inside the closed trigger. Outside an InputGroup, the trigger has a minimum height set by its size (28/32/36px in the default theme). A one-line value that fits stays at that height; taller content can grow the trigger, but multiline values are not guaranteed to add a full line of height or align with adjacent single-line controls. Inside an InputGroup the group owns the row height: a SelectorOption folds onto one line and ellipsizes, and any taller node is clipped to the row.',
     },
     {
       name: 'indicatorPosition',

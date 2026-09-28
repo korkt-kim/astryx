@@ -99,7 +99,7 @@ const styles = stylex.create({
     justifyContent: 'space-between',
     gap: spacingVars['--spacing-2'],
     width: '100%',
-    paddingBlock: spacingVars['--spacing-2'],
+    paddingBlock: 0,
     paddingInline: spacingVars['--spacing-3'],
     fontFamily: typographyVars['--font-family-body'],
     fontSize: {
@@ -406,20 +406,10 @@ const styles = stylex.create({
 // Keep these calculations inline: a consumer's Babel preset can lower a
 // module-scope helper to a function expression before StyleX evaluates this
 // object, and StyleX cannot constant-evaluate that transformed helper.
-
 const sizeStyles = stylex.create({
-  sm: {
-    minHeight: sizeVars['--size-element-sm'],
-    paddingBlock: `calc((${sizeVars['--size-element-sm']} - ${spacingVars['--spacing-5']} - 2 * ${borderVars['--border-width']}) / 2)`,
-  },
-  md: {
-    minHeight: sizeVars['--size-element-md'],
-    paddingBlock: `calc((${sizeVars['--size-element-md']} - ${spacingVars['--spacing-5']} - 2 * ${borderVars['--border-width']}) / 2)`,
-  },
-  lg: {
-    minHeight: sizeVars['--size-element-lg'],
-    paddingBlock: `calc((${sizeVars['--size-element-lg']} - ${spacingVars['--spacing-5']} - 2 * ${borderVars['--border-width']}) / 2)`,
-  },
+  sm: {minHeight: sizeVars['--size-element-sm']},
+  md: {minHeight: sizeVars['--size-element-md']},
+  lg: {minHeight: sizeVars['--size-element-lg']},
 });
 
 /**

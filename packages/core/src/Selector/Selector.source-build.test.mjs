@@ -18,10 +18,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../../../..');
 const SELECTOR_SOURCE = path.join(__dirname, 'Selector.tsx');
 
-const EXPECTED_PADDING_DECLARATIONS = [
-  'padding-block:calc((var(--size-element-sm) - var(--spacing-5) - 2 * var(--border-width)) / 2)',
-  'padding-block:calc((var(--size-element-md) - var(--spacing-5) - 2 * var(--border-width)) / 2)',
-  'padding-block:calc((var(--size-element-lg) - var(--spacing-5) - 2 * var(--border-width)) / 2)',
+const EXPECTED_SIZE_DECLARATIONS = [
+  'min-height:var(--size-element-sm)',
+  'min-height:var(--size-element-md)',
+  'min-height:var(--size-element-lg)',
 ];
 
 describe('Selector source-build compatibility (#5464)', () => {
@@ -58,8 +58,17 @@ describe('Selector source-build compatibility (#5464)', () => {
 
     const declarations = (result?.metadata?.stylex ?? [])
       .map(([, rule]) => rule.ltr.match(/^\.[^{]+\{(.+)\}$/)?.[1])
-      .filter(declaration => declaration?.startsWith('padding-block:calc'));
+      .filter(Boolean);
 
-    expect(declarations).toEqual(EXPECTED_PADDING_DECLARATIONS);
+    expect(declarations).toContain('padding-block:0');
+    expect(declarations).toContain('line-height:var(--spacing-5)');
+    expect(
+      declarations.filter(value =>
+        value.startsWith('min-height:var(--size-element-'),
+      ),
+    ).toEqual(EXPECTED_SIZE_DECLARATIONS);
+    expect(
+      declarations.some(value => value.startsWith('padding-block:calc')),
+    ).toBe(false);
   });
 });

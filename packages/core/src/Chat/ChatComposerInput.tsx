@@ -14,8 +14,9 @@
  * inline token rendering, serialization, Enter-to-submit with
  * IME-composition guarding and an onKeyDown seam for platform-specific
  * key handling, message history, paste/drop file handling, and
- * mobile-safe touch typography.
- *
+ * mobile-safe touch typography. The single-line minimum includes editable
+ * padding so an empty disabled editor keeps its geometry while longer drafts
+ * can still grow naturally.
  *
  * SYNC: When modified, update:
  * - /packages/core/src/Chat/ChatComposerInput.test.tsx
@@ -238,7 +239,8 @@ const styles = stylex.create({
     position: 'relative',
     display: 'flex',
     flexDirection: 'column',
-    minHeight: `${LINE_HEIGHT_PX}px`,
+    // Empty disabled contenteditables lose their line box in Chromium.
+    minHeight: `calc(${LINE_HEIGHT_PX}px + 2 * ${spacingVars['--spacing-1']})`,
   },
   editable: {
     outline: 'none',

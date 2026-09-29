@@ -1,6 +1,13 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @input ChatComposerInput props, draft interactions, and trigger fixtures.
+ * @output Input stories and browser probes for sizing and file-drop hit targets.
+ * @position Storybook evidence; the #6651 guard preserves geometry and semantics.
+ */
+
 import type {Meta, StoryObj} from '@storybook/react';
+import * as stylex from '@stylexjs/stylex';
 import {
   ChatComposer,
   ChatComposerInput,
@@ -11,7 +18,7 @@ import {createStaticSource} from '@astryxdesign/core/Typeahead';
 import {Badge} from '@astryxdesign/core/Badge';
 import {TypeaheadItem} from '@astryxdesign/core/Typeahead';
 import type {SearchableItem, SearchSource} from '@astryxdesign/core/Typeahead';
-import {expect, fireEvent, userEvent, within} from 'storybook/test';
+import {expect, fireEvent, userEvent, waitFor, within} from 'storybook/test';
 import {useRef, useState} from 'react';
 
 const meta: Meta = {
@@ -152,6 +159,126 @@ export const Disabled: Story = {
   ),
 };
 
+// Reuses the isolated grid case from #6651 and PR #6654.
+// Native wrappers deliberately exclude ChatComposer and themed button geometry.
+const disabledHeightStyles = stylex.create({
+  row: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) auto',
+    alignItems: 'end',
+    gap: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'var(--color-border-emphasized)',
+    width: 360,
+  },
+  sendReference: {
+    width: 36,
+    height: 36,
+  },
+});
+
+function DisabledHeightToggleExample() {
+  const [isDisabled, setIsDisabled] = useState(false);
+  const [value, setValue] = useState('');
+  return (
+    <div data-testid="disabled-height-repro">
+      <button
+        type="button"
+        aria-pressed={isDisabled}
+        onClick={() => setIsDisabled(value => !value)}>
+        Toggle disabled: {String(isDisabled)}
+      </button>
+      <div
+        {...stylex.props(disabledHeightStyles.row)}
+        data-testid="bottom-aligned-row">
+        <ChatComposerInput
+          value={value}
+          onChange={setValue}
+          placeholder="Type a message…"
+          label="Reproduction input"
+          isDisabled={isDisabled}
+          data-testid="reproduction-input"
+          maxRows={1}
+        />
+        <button
+          type="button"
+          aria-label="Send (layout reference)"
+          {...stylex.props(disabledHeightStyles.sendReference)}>
+          ↑
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export const DisabledHeightToggle: Story = {
+  name: 'Disabled Height Toggle (#6651)',
+  render: () => <DisabledHeightToggleExample />,
+};
+
+/** Run in real Chromium by .github/scripts/story-play-guard.js, not jsdom. */
+export const DisabledHeightRegression: Story = {
+  render: () => <DisabledHeightToggleExample />,
+  play: async ({canvasElement}) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole('textbox', {name: 'Reproduction input'});
+    const root = canvas.getByTestId('reproduction-input');
+    const row = canvas.getByTestId('bottom-aligned-row');
+    const placeholder = canvas.getByText('Type a message…');
+    const toggle = canvas.getByRole('button', {name: /Toggle disabled:/});
+    const placeholderOffset = () =>
+      placeholder.getBoundingClientRect().top - row.getBoundingClientRect().top;
+    const initialHeight = root.getBoundingClientRect().height;
+    const initialRowHeight = row.getBoundingClientRect().height;
+    const initialOffset = placeholderOffset();
+
+    // Start with a fresh empty editor: editing and deleting can leave a <br>
+    // that masks the disabled-height regression in Chromium.
+    await expect(initialHeight).toBeGreaterThan(0);
+    await expect(input.textContent).toBe('');
+    await expect(input).toHaveAttribute('aria-multiline', 'true');
+    await userEvent.click(toggle);
+    await expect(input).toHaveAttribute('contenteditable', 'false');
+    await expect(input).toHaveAttribute('aria-disabled', 'true');
+    await waitFor(() => {
+      expect(root.getBoundingClientRect().height).toBeCloseTo(initialHeight, 1);
+      expect(row.getBoundingClientRect().height).toBeCloseTo(
+        initialRowHeight,
+        1,
+      );
+      expect(placeholderOffset()).toBeCloseTo(initialOffset, 1);
+    });
+
+    await userEvent.click(toggle);
+    await expect(input).toHaveAttribute('contenteditable', 'true');
+    await expect(input).not.toHaveAttribute('aria-disabled');
+    await expect(root.getBoundingClientRect().height).toBeCloseTo(
+      initialHeight,
+      1,
+    );
+    await expect(placeholderOffset()).toBeCloseTo(initialOffset, 1);
+    await userEvent.tab();
+    await expect(input).toHaveFocus();
+    await userEvent.type(input, 'A message');
+    await expect(input).toHaveTextContent('A message');
+    await expect(canvas.queryByText('Type a message…')).not.toBeInTheDocument();
+
+    // Exercise the row limit with overflowing text, not just one intrinsic line.
+    await userEvent.clear(input);
+    await userEvent.type(input, 'AAAAA{Shift>}{Enter}{/Shift}BBBBB');
+    await expect(input.scrollHeight).toBeGreaterThan(22);
+
+    // maxRows=1 limits the scrolling viewport, not the surrounding padding.
+    const rootBounds = root.getBoundingClientRect();
+    const editorBounds = input.getBoundingClientRect();
+    await expect(editorBounds.height).toBeCloseTo(22, 1);
+    await expect(editorBounds.top - rootBounds.top).toBeCloseTo(4, 1);
+    await expect(rootBounds.bottom - editorBounds.bottom).toBeCloseTo(4, 1);
+  },
+};
+
 /** Max rows — scrolls after 3 lines */
 export const MaxRows: Story = {
   render: () => (
@@ -159,11 +286,274 @@ export const MaxRows: Story = {
       onSubmit={v => alert(v)}
       input={
         <ChatComposerInput
-          maxRows={3}
+          maxRows={1}
           placeholder="Type a long message — scrolls after 3 lines..."
         />
       }
     />
+  ),
+};
+
+const singleRowComparisonStyles = stylex.create({
+  comparison: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: 24,
+    marginBlockEnd: 24,
+  },
+  frame: {
+    padding: 12,
+    marginBlockStart: 8,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'var(--color-border-emphasized)',
+  },
+  bottomAligned: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) auto',
+    alignItems: 'end',
+    gap: 12,
+  },
+  inputBounds: {
+    outlineWidth: 1,
+    outlineStyle: 'dashed',
+    outlineColor: 'currentColor',
+    backgroundColor: 'color-mix(in srgb, currentColor 8%, transparent)',
+  },
+  // Reproduce only the previous root minimum; do not override the editor.
+  previousMinimum: {
+    minHeight: 22,
+  },
+  dropTarget: {
+    position: 'relative',
+  },
+  dropMarker: {
+    position: 'absolute',
+    bottom: 0,
+    insetInlineStart: 0,
+    insetInlineEnd: 0,
+    height: 8,
+    pointerEvents: 'none',
+    backgroundColor: 'color-mix(in srgb, currentColor 20%, transparent)',
+  },
+  actions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBlockStart: 12,
+  },
+});
+
+function SingleRowComparisonCase({
+  layout,
+  version,
+}: {
+  layout: 'row' | 'stack';
+  version: 'before' | 'after';
+}) {
+  const [value, setValue] = useState('Hello');
+  const isBefore = version === 'before';
+  return (
+    <div>
+      <strong>
+        {isBefore ? 'Before (old minimum)' : 'After (current minimum)'}
+      </strong>
+      <div
+        {...stylex.props(
+          singleRowComparisonStyles.frame,
+          layout === 'row' && singleRowComparisonStyles.bottomAligned,
+        )}
+        data-testid={`${layout}-${version}-frame`}>
+        <ChatComposerInput
+          maxRows={1}
+          value={value}
+          onChange={setValue}
+          label={`${layout} ${version} input`}
+          placeholder="Type a message…"
+          xstyle={[
+            singleRowComparisonStyles.inputBounds,
+            isBefore && singleRowComparisonStyles.previousMinimum,
+          ]}
+          data-testid={`${layout}-${version}-input`}
+        />
+        {layout === 'row' ? (
+          <button
+            type="button"
+            aria-label={`${version} layout reference`}
+            {...stylex.props(disabledHeightStyles.sendReference)}
+            data-testid={`${layout}-${version}-reference`}>
+            ↑
+          </button>
+        ) : (
+          <div data-testid={`${layout}-${version}-reference`}>
+            Following element
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Compare the real maxRows prop; no cloned DOM or editable-height overrides. */
+export const MaxRowsOneLayoutImpact: Story = {
+  name: 'Max Rows 1 — Layout Impact (#6651)',
+  render: () => (
+    <div data-testid="single-row-layout-comparison">
+      <h2>maxRows=1: layout impact</h2>
+      <p>
+        Both sides use maxRows=1. Only Before restores the old 22px root
+        minimum. The dashed outline marks the whole input wrapper.
+      </p>
+      <h3>Bottom-aligned row</h3>
+      <div {...stylex.props(singleRowComparisonStyles.comparison)}>
+        <SingleRowComparisonCase layout="row" version="before" />
+        <SingleRowComparisonCase layout="row" version="after" />
+      </div>
+      <h3>Vertical stack</h3>
+      <div {...stylex.props(singleRowComparisonStyles.comparison)}>
+        <SingleRowComparisonCase layout="stack" version="before" />
+        <SingleRowComparisonCase layout="stack" version="after" />
+      </div>
+      <p>
+        The one-line editor can scroll on both sides; that limit predates the
+        root-height change. Reload the story to reset the comparison.
+      </p>
+    </div>
+  ),
+};
+
+function SingleRowFileDropCase({version}: {version: 'before' | 'after'}) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [value, setValue] = useState('Hello');
+  const [receivedFiles, setReceivedFiles] = useState<string[]>([]);
+  const [result, setResult] = useState('Not tested');
+
+  function simulateDrop(location: 'bottom' | 'inside') {
+    const root = rootRef.current;
+    if (!root) {
+      return;
+    }
+    const bounds = root.getBoundingClientRect();
+    const x = bounds.left + 12;
+    const y = location === 'bottom' ? bounds.bottom - 4 : bounds.top + 8;
+    const target = root.ownerDocument.elementFromPoint(x, y);
+    if (!target || !root.contains(target)) {
+      setResult('Scroll the input into view, then try again.');
+      return;
+    }
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(['demo'], 'demo.txt', {type: 'text/plain'}));
+    // Exercise actual hit-testing and React drag/drop handlers. Synthetic
+    // events deliberately avoid a real OS file drop navigating the browser.
+    const dragover = new DragEvent('dragover', {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer: transfer,
+    });
+    target.dispatchEvent(dragover);
+    const drop = new DragEvent('drop', {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer: transfer,
+    });
+    target.dispatchEvent(drop);
+    const hit =
+      target.getAttribute('role') === 'textbox' ? 'editor' : 'wrapper';
+    setResult(
+      `Hit: ${hit}. Dragover prevented: ${dragover.defaultPrevented}. Drop prevented: ${drop.defaultPrevented}.`,
+    );
+  }
+
+  return (
+    <div>
+      <h3>
+        {version === 'before'
+          ? 'Before (old minimum)'
+          : 'After (current minimum)'}
+      </h3>
+      <ChatComposer
+        value={value}
+        onChange={setValue}
+        onSubmit={() => {}}
+        input={
+          <div {...stylex.props(singleRowComparisonStyles.dropTarget)}>
+            <ChatComposerInput
+              ref={rootRef}
+              maxRows={1}
+              label={`${version} file drop input`}
+              xstyle={[
+                singleRowComparisonStyles.inputBounds,
+                version === 'before' &&
+                  singleRowComparisonStyles.previousMinimum,
+              ]}
+              onFiles={files =>
+                setReceivedFiles(previous => [
+                  ...previous,
+                  ...files.map(file => file.name),
+                ])
+              }
+              data-testid={`file-drop-${version}-input`}
+            />
+            <div
+              aria-hidden="true"
+              {...stylex.props(singleRowComparisonStyles.dropMarker)}
+            />
+          </div>
+        }
+      />
+      <div {...stylex.props(singleRowComparisonStyles.actions)}>
+        <button
+          type="button"
+          onClick={() => simulateDrop('bottom')}
+          data-testid={`file-drop-${version}-bottom`}>
+          Drop at bottom edge
+        </button>
+        <button
+          type="button"
+          onClick={() => simulateDrop('inside')}
+          data-testid={`file-drop-${version}-inside`}>
+          Drop inside editor
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setReceivedFiles([]);
+            setResult('Not tested');
+          }}>
+          Reset result
+        </button>
+      </div>
+      <div role="status" aria-live="polite">
+        <p data-testid={`file-drop-${version}-files`}>
+          Received files: {receivedFiles.join(', ') || 'none'}
+        </p>
+        <p data-testid={`file-drop-${version}-result`}>{result}</p>
+      </div>
+    </div>
+  );
+}
+
+/** Functional probe: the extra root area must not silently lose file intake. */
+export const MaxRowsOneFileDropGap: Story = {
+  name: 'Max Rows 1 — File Drop Gap (#6651)',
+  render: () => (
+    <div data-testid="single-row-file-drop-comparison">
+      <h2>maxRows=1: file-drop hit area</h2>
+      <p>
+        Both inputs use ChatComposer and maxRows=1. The shaded bottom strip
+        marks the test area and does not intercept pointer events.
+      </p>
+      <p>
+        Click Drop at bottom edge on each side. Then try Drop inside editor as a
+        control. Buttons dispatch demo File drag/drop events at the
+        browser-selected target; they do not call onFiles directly. No real file
+        drag is needed.
+      </p>
+      <div {...stylex.props(singleRowComparisonStyles.comparison)}>
+        <SingleRowFileDropCase version="before" />
+        <SingleRowFileDropCase version="after" />
+      </div>
+    </div>
   ),
 };
 

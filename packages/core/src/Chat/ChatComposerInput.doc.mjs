@@ -1,5 +1,11 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @input Public ChatComposerInput sizing and interaction props.
+ * @output Builder-facing input anatomy, row limits, and usage guidance.
+ * @position Consumer documentation; padding is outside the scrolling viewport.
+ */
+
 /** @type {import('@astryxdesign/cli/authoring').ComponentDoc} */
 
 export const docs = {
@@ -34,13 +40,13 @@ export const docs = {
         name: 'Input root',
         required: true,
         description:
-          'The themed container that forwards the root ref and BaseProps styling seams.',
+          'The padded themed container that forwards the root ref and BaseProps styling seams, focuses the editor from its padding, and accepts file drops across the input surface.',
       },
       {
         name: 'Editable surface',
         required: true,
         description:
-          'The labeled contenteditable textbox or combobox that owns text, selection, keyboard, paste, and drop behavior.',
+          'The labeled contenteditable textbox or combobox that owns text, selection, keyboard, and paste behavior. Its scrolling viewport is limited by maxRows; padding stays outside that viewport.',
       },
       {
         name: 'Placeholder',
@@ -91,7 +97,7 @@ export const docs = {
       name: 'maxRows',
       type: 'number',
       description:
-        'Maximum visible rows before the input scrolls. Use a lower value in compact layouts.',
+        'Maximum height of the scrolling viewport, measured in text rows. Surrounding padding is outside this limit. Use a lower value in compact layouts.',
       default: '8',
     },
     {
@@ -172,7 +178,8 @@ export const docsZh = {
     value: '受控输入值。与 onChange 配对实现双向绑定。',
     onChange: '输入值变更时调用。序列化字符串包含标记占位符。',
     placeholder: '输入为空时显示的占位文本。',
-    maxRows: '滚动前的最大可见行数。紧凑布局中使用较小值。',
+    maxRows:
+      '滚动视口的最大高度（以文本行数计），外围内边距不计入此限制。紧凑布局中使用较小值。',
     triggers:
       '菜单的触发定义。每个触发器指定字符（@ 或 /）、搜索源和返回要插入标记的 onSelect 处理器。',
     debounceMs: '异步搜索源的去抖动延迟，避免过多网络请求。',
@@ -203,7 +210,8 @@ export const docsDense = {
     onChange:
       'value change handler; serialized string includes token placeholders',
     placeholder: 'placeholder when empty',
-    maxRows: 'max visible rows before scroll; lower for compact layouts',
+    maxRows:
+      'scrolling viewport height in text rows; padding outside; lower for compact layouts',
     triggers:
       'typeahead trigger defs; character(@/)+searchSource+onSelect returning token',
     debounceMs: 'debounce for async search to avoid excess requests',

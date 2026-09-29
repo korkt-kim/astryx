@@ -29,6 +29,12 @@ find it:
   them. Icon and indicator registries, `MediaTheme`, `CodeTheme` and the like
   live under `Themes/`.
 
+The **Core/Dialog/No reset CSS (#6678)** story reproduces the shipped Dialog
+border in an isolated iframe with built `astryx.css` and neutral `theme.css`,
+but no `reset.css` (which Storybook imports globally). Build core and
+`@astryxdesign/theme-neutral` before viewing it; the normal Storybook Dialog
+stories use source instead of the published CSS/JS pipeline.
+
 ### A Theme Sheet must not pin its own theme
 
 Render the component plainly and let the toolbar drive the theme. A story that

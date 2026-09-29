@@ -14,9 +14,9 @@
  * inline token rendering, serialization, Enter-to-submit with
  * IME-composition guarding and an onKeyDown seam for platform-specific
  * key handling, message history, paste/drop file handling, and
- * mobile-safe touch typography. The single-line minimum includes editable
- * padding so an empty disabled editor keeps its geometry while longer drafts
- * can still grow naturally.
+ * mobile-safe touch typography. Padding stays outside the row-limited scrolling
+ * editor, which keeps a one-line floor when disabled. The padded root forwards
+ * focus and file drops without expanding the text viewport.
  *
  * SYNC: When modified, update:
  * - /packages/core/src/Chat/ChatComposerInput.test.tsx
@@ -38,6 +38,7 @@ import {
   type KeyboardEvent,
   type ClipboardEvent,
   type DragEvent,
+  type MouseEvent,
 } from 'react';
 import {createPortal} from 'react-dom';
 import type {BaseProps} from '../BaseProps';
@@ -180,7 +181,7 @@ export interface ChatComposerInputProps extends Omit<
   onChange?: (value: string) => void;
   /** Placeholder text. @default 'Type a message\u2026' */
   placeholder?: string;
-  /** Max rows before scrolling. @default 8 */
+  /** Max text rows in the scrolling viewport, excluding outer padding. @default 8 */
   maxRows?: number;
   /** Trigger definitions for @ menus, / commands, etc. */
   triggers?: ChatComposerTrigger[];
@@ -239,11 +240,13 @@ const styles = stylex.create({
     position: 'relative',
     display: 'flex',
     flexDirection: 'column',
-    // Empty disabled contenteditables lose their line box in Chromium.
+    boxSizing: 'border-box',
+    padding: spacingVars['--spacing-1'],
     minHeight: `calc(${LINE_HEIGHT_PX}px + 2 * ${spacingVars['--spacing-1']})`,
   },
   editable: {
     outline: 'none',
+    minHeight: `${LINE_HEIGHT_PX}px`,
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     overflowY: 'auto',
@@ -260,7 +263,7 @@ const styles = stylex.create({
     fontFamily: typographyVars['--font-family-body'],
     color: colorVars['--color-text-primary'],
     caretColor: colorVars['--color-accent'],
-    padding: spacingVars['--spacing-1'],
+    padding: 0,
   },
   placeholder: {
     position: 'absolute',
@@ -279,7 +282,7 @@ const styles = stylex.create({
     lineHeight: `${LINE_HEIGHT_PX}px`,
     fontFamily: typographyVars['--font-family-body'],
     userSelect: 'none',
-    padding: spacingVars['--spacing-1'],
+    padding: 'inherit',
   },
   disabled: {
     opacity: 0.5,
@@ -351,6 +354,9 @@ export function ChatComposerInput(props: ChatComposerInputProps) {
     onFiles,
     onSubmit = composerCtx?.onSubmit,
     onKeyDown: onKeyDownProp,
+    onClick: onClickProp,
+    onDragOver: onDragOverProp,
+    onDrop: onDropProp,
     xstyle,
     className,
     style,
@@ -461,6 +467,20 @@ export function ChatComposerInput(props: ChatComposerInputProps) {
     editable.focus();
     placeCaretAtEnd(editable);
   }, []);
+
+  const handleRootClick = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      onClickProp?.(event);
+      if (
+        !event.defaultPrevented &&
+        !isDisabled &&
+        event.target === event.currentTarget
+      ) {
+        focusEditableAtEnd();
+      }
+    },
+    [focusEditableAtEnd, isDisabled, onClickProp],
+  );
 
   const handle: ChatComposerInputHandle = {
     insertToken: (token: ChatComposerToken) => insertTokenRef.current(token),
@@ -807,26 +827,36 @@ export function ChatComposerInput(props: ChatComposerInputProps) {
     [onFiles, onPasteProp, emitChange, tokens, pasteAsToken],
   );
 
-  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
-    if (Array.from(e.dataTransfer.types).includes('Files')) {
-      e.preventDefault();
-    }
-  }, []);
+  const handleDragOver = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      // Portaled trigger menus are outside the padded input's drop surface.
+      if (
+        e.target instanceof Node &&
+        e.currentTarget.contains(e.target) &&
+        Array.from(e.dataTransfer.types).includes('Files')
+      ) {
+        e.preventDefault();
+      }
+      onDragOverProp?.(e);
+    },
+    [onDragOverProp],
+  );
 
   const handleDrop = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
-      const files = Array.from(e.dataTransfer.files);
-      if (files.length === 0) {
-        return;
+      if (e.target instanceof Node && e.currentTarget.contains(e.target)) {
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length > 0) {
+          // The complete padded input is a drop target, even without onFiles.
+          e.preventDefault();
+          if (!isDisabled) {
+            onFiles?.(files);
+          }
+        }
       }
-      // File drops navigate the page by default. The input owns that drop
-      // target even when no callback is supplied, so keep the user in place.
-      e.preventDefault();
-      if (!isDisabled) {
-        onFiles?.(files);
-      }
+      onDropProp?.(e);
     },
-    [isDisabled, onFiles],
+    [isDisabled, onFiles, onDropProp],
   );
 
   const maxHeight = maxRows * LINE_HEIGHT_PX;
@@ -840,7 +870,10 @@ export function ChatComposerInput(props: ChatComposerInputProps) {
         className,
         style,
       )}
-      {...rest}>
+      {...rest}
+      onClick={handleRootClick}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}>
       {isEmpty && (
         <div {...stylex.props(styles.placeholder)} aria-hidden="true">
           {placeholder}
@@ -854,8 +887,6 @@ export function ChatComposerInput(props: ChatComposerInputProps) {
         onInput={handleInput}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
         {...triggerMenu.ariaProps}
         aria-disabled={isDisabled || undefined}
         {...mergeProps(stylex.props(styles.editable), {

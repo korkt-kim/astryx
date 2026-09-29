@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @input ChatComposerInput public props, root refs, and editor interactions.
+ * @output Regression evidence for editing, padded-surface focus, and file intake.
+ * @position Colocated DOM tests; scrolling geometry is checked in a real browser.
+ */
+
+import {createRef} from 'react';
 import {describe, it, expect, vi, afterEach} from 'vitest';
 import {render, screen, fireEvent, waitFor, act} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -174,6 +181,59 @@ describe('ChatComposerInput', () => {
   });
 
   describe('composer focus control', () => {
+    it('focuses the editor from the padded root without replacing onClick', () => {
+      const rootRef = createRef<HTMLDivElement>();
+      const onClick = vi.fn();
+      render(<ChatComposerInput ref={rootRef} onClick={onClick} />);
+
+      fireEvent.click(rootRef.current!);
+
+      expect(screen.getByRole('textbox')).toHaveFocus();
+      expect(onClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not focus a disabled editor from its padded root', () => {
+      const rootRef = createRef<HTMLDivElement>();
+      render(<ChatComposerInput ref={rootRef} isDisabled />);
+
+      fireEvent.click(rootRef.current!);
+
+      expect(screen.getByRole('textbox')).not.toHaveFocus();
+    });
+
+    it('lets onClick cancel padded-root focus', () => {
+      const rootRef = createRef<HTMLDivElement>();
+      render(
+        <ChatComposerInput
+          ref={rootRef}
+          onClick={event => event.preventDefault()}
+        />,
+      );
+
+      fireEvent.click(rootRef.current!);
+
+      expect(screen.getByRole('textbox')).not.toHaveFocus();
+    });
+
+    it('does not move an existing caret when a click comes from the editor', () => {
+      render(<ChatComposerInput />);
+      const textbox = screen.getByRole('textbox');
+      textbox.textContent = 'hello';
+      fireEvent.input(textbox);
+      textbox.focus();
+      const selection = window.getSelection()!;
+      const range = document.createRange();
+      range.setStart(textbox.firstChild!, 1);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      fireEvent.click(textbox);
+
+      expect(selection.anchorNode).toBe(textbox.firstChild);
+      expect(selection.anchorOffset).toBe(1);
+    });
+
     it('registers a focus control so a body click focuses the input', () => {
       render(
         <ChatComposer onSubmit={() => {}} input={<ChatComposerInput />} />,
@@ -473,7 +533,11 @@ describe('ChatComposerInput', () => {
       submit(textbox, 'first');
 
       // Multi-line draft: "aaa" <br> "bbb".
-      textbox.innerHTML = 'aaa<br>bbb';
+      textbox.replaceChildren(
+        document.createTextNode('aaa'),
+        document.createElement('br'),
+        document.createTextNode('bbb'),
+      );
       fireEvent.input(textbox);
       textbox.focus();
       // Caret mid first line.
@@ -556,6 +620,37 @@ describe('ChatComposerInput', () => {
   });
 
   describe('file handling', () => {
+    it('accepts files on the padded root and preserves consumer drag handlers', () => {
+      const rootRef = createRef<HTMLDivElement>();
+      const onFiles = vi.fn();
+      const onDragOver = vi.fn();
+      const onDrop = vi.fn();
+      const {rerender} = render(
+        <ChatComposerInput
+          ref={rootRef}
+          onFiles={onFiles}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+        />,
+      );
+      const file = new File(['content'], 'padded-drop.txt', {
+        type: 'text/plain',
+      });
+      const dataTransfer = {files: [file], types: ['Files']};
+
+      expect(fireEvent.dragOver(rootRef.current!, {dataTransfer})).toBe(false);
+      expect(fireEvent.drop(rootRef.current!, {dataTransfer})).toBe(false);
+      expect(onFiles).toHaveBeenCalledExactlyOnceWith([file]);
+      expect(onDragOver).toHaveBeenCalledTimes(1);
+      expect(onDrop).toHaveBeenCalledTimes(1);
+
+      rerender(
+        <ChatComposerInput ref={rootRef} isDisabled onFiles={onFiles} />,
+      );
+      expect(fireEvent.drop(rootRef.current!, {dataTransfer})).toBe(false);
+      expect(onFiles).toHaveBeenCalledTimes(1);
+    });
+
     it('calls onFiles on paste with files', () => {
       const onFiles = vi.fn();
       render(<ChatComposerInput onFiles={onFiles} />);
@@ -581,7 +676,7 @@ describe('ChatComposerInput', () => {
         dataTransfer: {files: [file], types: ['Files']},
       });
       expect(allowed).toBe(false);
-      expect(onFiles).toHaveBeenCalledWith([file]);
+      expect(onFiles).toHaveBeenCalledExactlyOnceWith([file]);
     });
 
     it('does not emit dropped files while disabled', () => {

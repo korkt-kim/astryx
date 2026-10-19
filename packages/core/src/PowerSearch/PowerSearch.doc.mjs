@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file PowerSearch.doc.mjs
+ * @input PowerSearch's public props and filter-editing interactions
+ * @output Builder documentation, including focus-only return after saving
+ * @position Consumer documentation for the PowerSearch component
+ */
+
 /** @type {import('@astryxdesign/cli/authoring').ComponentDoc} */
 
 export const docs = {
@@ -173,17 +180,20 @@ export const docs = {
     {
       name: 'menuWidth',
       type: 'number',
-      description: 'Maximum width for the operator/value dropdown menu in pixels.',
+      description:
+        'Maximum width for the operator/value dropdown menu in pixels.',
     },
     {
       name: 'maxOperatorMenuItems',
       type: 'number',
-      description: 'Maximum number of items displayed in the operator dropdown.',
+      description:
+        'Maximum number of items displayed in the operator dropdown.',
     },
     {
       name: 'tokenOverflowBehavior',
       type: "'none' | 'unfocusedInline' | 'unfocusedLayer'",
-      description: 'Controls how tokens overflow when the container is too narrow. Forwarded to Tokenizer.',
+      description:
+        'Controls how tokens overflow when the container is too narrow. Forwarded to Tokenizer.',
       default: "'none'",
     },
     {
@@ -250,7 +260,7 @@ export const docs = {
   },
   usage: {
     description:
-      'PowerSearch is a structured filter bar where each token represents a field, operator, and value. Use it for complex multi-dimensional filtering when users need to combine multiple search criteria. For simple single-field search, use a text input instead.',
+      'PowerSearch is a structured filter bar where each token represents a field, operator, and value. Use it for complex multi-dimensional filtering when users need to combine multiple search criteria. For simple single-field search, use a text input instead. Applying a filter returns focus to Search without automatically opening suggestions.',
     bestPractices: [
       {
         guidance: true,

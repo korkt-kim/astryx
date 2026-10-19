@@ -5,7 +5,7 @@
 /**
  * @file PowerSearch.tsx
  * @input PowerSearchConfig, filters, onChange
- * @output Structured filter bar with token-based filter management
+ * @output Structured filters; editor saves return Search focus without suggestions
  * @position Main component; forwards DOM ref and exposes tokenizer control via
  *   handleRef
  *
@@ -593,6 +593,19 @@ export function PowerSearch({
   const popoverSaveButtonLabel =
     popoverSaveButtonLabelFromProps ?? t('@astryx.powersearch.editor.apply');
   const tokenizerRef = useRef<TokenizerHandle>(null);
+  const isRestoringSearchFocusRef = useRef(false);
+
+  // Tokenizer's outer capture handler still updates focus-within state and
+  // notifies onFocus. Stop only this input's return-focus event before it
+  // reaches BaseTypeahead's ordinary focus-to-open handler.
+  const handleSearchFocusCapture = useCallback(
+    (event: React.FocusEvent<HTMLInputElement>) => {
+      if (isRestoringSearchFocusRef.current) {
+        event.stopPropagation();
+      }
+    },
+    [],
+  );
 
   const [popoverState, setPopoverStateRaw] = useState<PopoverState>({
     type: 'idle',
@@ -615,7 +628,7 @@ export function PowerSearch({
 
   // Wrapper that manages layer visibility and tokenizer focus alongside state
   const setPopoverState = useCallback(
-    (state: PopoverState) => {
+    (state: PopoverState, focusIntent: 'search' | 'restore' = 'search') => {
       setPopoverStateRaw(state);
       if (state.type !== 'idle') {
         // Schedule after the current frame so React can render the popover
@@ -625,8 +638,15 @@ export function PowerSearch({
           tokenizerRef.current?.blur();
         });
       } else {
-        popover.hide();
-        tokenizerRef.current?.focus();
+        // Native hidePopover can return focus before the explicit focus()
+        // below, so cover both operations with the same completion intent.
+        isRestoringSearchFocusRef.current = focusIntent === 'restore';
+        try {
+          popover.hide();
+          tokenizerRef.current?.focus();
+        } finally {
+          isRestoringSearchFocusRef.current = false;
+        }
       }
     },
     [popover],
@@ -815,7 +835,7 @@ export function PowerSearch({
           onChange(newFilters, 'remove', popoverState.filterIndex);
         }
       }
-      setPopoverState({type: 'idle'});
+      setPopoverState({type: 'idle'}, 'restore');
     },
     [popoverState, filters, onChange, setPopoverState],
   );
@@ -1113,6 +1133,7 @@ export function PowerSearch({
           status={status}
           statusVariant={statusVariant}
           onFocus={onFocus}
+          onFocusCapture={handleSearchFocusCapture}
           onBlur={onBlur}
           containerXstyle={xstyle}
           containerClassName={className}

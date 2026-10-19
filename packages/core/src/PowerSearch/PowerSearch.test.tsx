@@ -3,7 +3,7 @@
 /**
  * @file PowerSearch.test.tsx
  * @input Uses vitest, @testing-library/react, PowerSearch
- * @output Integration tests for PowerSearch component
+ * @output Integration tests for filtering and editor-to-search focus restoration
  * @position Testing; validates PowerSearch.tsx
  *
  * SYNC: When PowerSearch.tsx changes, update tests to match
@@ -40,7 +40,25 @@ class MockResizeObserver {
 
 beforeAll(() => {
   globalThis.ResizeObserver = MockResizeObserver;
-  HTMLElement.prototype.showPopover = vi.fn(function (this: HTMLElement) {
+  HTMLElement.prototype.showPopover = vi.fn(function (
+    this: HTMLElement,
+    options?: {source?: HTMLElement},
+  ) {
+    // Model native auto-popover sibling dismissal: opening the filter editor
+    // closes the main suggestions, but opening a selector inside that editor
+    // preserves its ancestor. jsdom does not implement this browser behavior.
+    for (const other of document.querySelectorAll<HTMLElement>(
+      '[popover="auto"]',
+    )) {
+      if (
+        other !== this &&
+        other.matches(':popover-open') &&
+        !other.contains(this) &&
+        !other.contains(options?.source ?? null)
+      ) {
+        other.hidePopover();
+      }
+    }
     popoverOpenState.set(this, true);
     const event = new Event('toggle');
     Object.defineProperty(event, 'newState', {value: 'open'});
@@ -110,8 +128,13 @@ const config: PowerSearchConfig = {
   ],
 };
 
-function PowerSearchWrapper(props: {config: PowerSearchConfig}) {
-  const [filters, setFilters] = useState<PowerSearchFilter[]>([]);
+function PowerSearchWrapper(props: {
+  config: PowerSearchConfig;
+  initialFilters?: PowerSearchFilter[];
+}) {
+  const [filters, setFilters] = useState<PowerSearchFilter[]>(
+    props.initialFilters ?? [],
+  );
   return (
     <PowerSearch
       config={props.config}
@@ -163,6 +186,232 @@ describe('PowerSearch', () => {
     });
 
     expect(screen.getByRole('combobox')).toHaveFocus();
+  });
+
+  describe('editor focus restoration', () => {
+    it.each([
+      {target: 'value', wasFocused: false},
+      {target: 'prefix', wasFocused: false},
+      {target: 'value', wasFocused: true},
+      {target: 'prefix', wasFocused: true},
+    ])(
+      'keeps suggestions closed after unchanged Apply: $target, prior Search focus=$wasFocused',
+      async ({target, wasFocused}) => {
+        const user = userEvent.setup();
+        render(
+          <>
+            <button type="button">Outside</button>
+            <PowerSearchWrapper
+              config={config}
+              initialFilters={[
+                {
+                  field: 'status',
+                  operator: 'is',
+                  value: {type: 'enum', value: 'open'},
+                },
+              ]}
+            />
+          </>,
+        );
+        const input = screen.getByRole('combobox', {name: 'Search'});
+        await user.click(screen.getByRole('button', {name: 'Outside'}));
+        if (wasFocused) {
+          await user.click(input);
+          await waitFor(() =>
+            expect(input).toHaveAttribute('aria-expanded', 'true'),
+          );
+        }
+        await user.click(
+          target === 'value'
+            ? screen.getByText('Open')
+            : screen.getByRole('button', {name: 'Status: is'}),
+        );
+        await user.click(
+          await screen.findByRole('button', {name: 'Apply', hidden: true}),
+        );
+        await waitFor(() => {
+          expect(input).toHaveFocus();
+          expect(input).toHaveAttribute('aria-expanded', 'false');
+        });
+        expect(input).not.toHaveAttribute('aria-activedescendant');
+        expect(screen.getByText('Open')).toBeInTheDocument();
+        expect(screen.getByRole('combobox', {name: 'Search'})).toBe(input);
+        expect(
+          screen.queryByRole('button', {name: 'Apply', hidden: true}),
+        ).not.toBeInTheDocument();
+        // Returning focus is not another search, but an intentional click is.
+        await user.click(input);
+        await waitFor(() =>
+          expect(input).toHaveAttribute('aria-expanded', 'true'),
+        );
+        await user.keyboard('{Escape}');
+        expect(input).toHaveAttribute('aria-expanded', 'false');
+        expect(input).toHaveFocus();
+      },
+    );
+    const initialFilters: PowerSearchFilter[] = ['ALPHA', 'BRAVO'].map(
+      value => ({
+        field: 'title',
+        operator: 'contains',
+        value: {type: 'string', value},
+      }),
+    );
+
+    it.each(['', 'Tit'])(
+      'restores focus without opening even when the parent keeps its filters (query="%s")',
+      async query => {
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        const onFocus = vi.fn();
+        render(
+          <>
+            <button type="button">Outside</button>
+            <PowerSearch
+              config={config}
+              filters={initialFilters}
+              onChange={onChange}
+              onFocus={onFocus}
+            />
+          </>,
+        );
+        const input = screen.getByRole('combobox', {name: 'Search'});
+        await user.click(input);
+        if (query) {
+          await user.type(input, query);
+        }
+        await waitFor(() =>
+          expect(input).toHaveAttribute('aria-expanded', 'true'),
+        );
+        await user.click(
+          screen.getAllByRole('button', {name: 'Title: contains'})[0],
+        );
+        await waitFor(() =>
+          expect(
+            screen.getByRole('textbox', {name: 'Value', hidden: true}),
+          ).toHaveFocus(),
+        );
+        onFocus.mockClear();
+        await user.click(
+          screen.getByRole('button', {name: 'Apply', hidden: true}),
+        );
+        await waitFor(() => {
+          expect(input).toHaveFocus();
+          expect(input).toHaveAttribute('aria-expanded', 'false');
+        });
+        expect(input).not.toHaveAttribute('aria-activedescendant');
+        expect(input).toHaveValue(query);
+        expect(onChange).toHaveBeenCalledOnce();
+        // Tokenizer still receives focus for its focus-within state and the
+        // consumer callback, even though search must not open on this return.
+        expect(onFocus).toHaveBeenCalledOnce();
+        await user.keyboard('{ArrowDown}');
+        await waitFor(() =>
+          expect(input).toHaveAttribute('aria-expanded', 'true'),
+        );
+        await user.keyboard('{Escape}');
+        await user.click(screen.getByRole('button', {name: 'Outside'}));
+        await user.click(input);
+        await waitFor(() =>
+          expect(input).toHaveAttribute('aria-expanded', 'true'),
+        );
+      },
+    );
+
+    it.each([
+      {history: 'initial filters', addThird: false, activation: 'pointer'},
+      {history: 'initial filters', addThird: false, activation: 'keyboard'},
+      {history: 'after adding a filter', addThird: true, activation: 'pointer'},
+      {
+        history: 'after adding a filter',
+        addThird: true,
+        activation: 'keyboard',
+      },
+    ])(
+      'returns focus without field suggestions after applying an edit: $history ($activation)',
+      async ({addThird, activation}) => {
+        const user = userEvent.setup();
+        render(
+          <PowerSearchWrapper
+            config={config}
+            initialFilters={initialFilters}
+          />,
+        );
+        const input = screen.getByRole('combobox', {name: 'Search'});
+
+        if (addThird) {
+          await user.type(input, 'Title');
+          await user.click(
+            await screen.findByRole('option', {name: 'Title', hidden: true}),
+          );
+          await user.type(
+            screen.getByRole('textbox', {name: 'Value', hidden: true}),
+            'CHARLIE',
+          );
+          await user.click(
+            screen.getByRole('button', {name: 'Apply', hidden: true}),
+          );
+          expect(screen.getByText('CHARLIE')).toBeInTheDocument();
+          await waitFor(() => expect(input).toHaveFocus());
+        }
+
+        await user.click(
+          screen.getAllByRole('button', {name: 'Title: contains'})[0],
+        );
+        const valueInput = screen.getByRole('textbox', {
+          name: 'Value',
+          hidden: true,
+        });
+        await user.clear(valueInput);
+        await user.type(valueInput, 'ALPHA33');
+        const apply = screen.getByRole('button', {name: 'Apply', hidden: true});
+        if (activation === 'pointer') {
+          await user.click(apply);
+        } else {
+          // Native-popover Tab traversal needs a browser; exercise activation here.
+          act(() => apply.focus());
+          expect(apply).toHaveFocus();
+          await user.keyboard('{Enter}');
+        }
+
+        expect(screen.getByText('ALPHA33')).toBeInTheDocument();
+        expect(screen.getByText('BRAVO')).toBeInTheDocument();
+        expect(screen.getAllByRole('button', {name: /^Remove /})).toHaveLength(
+          addThird ? 3 : 2,
+        );
+        await waitFor(() => {
+          expect(screen.getByRole('combobox', {name: 'Search'})).toBe(input);
+          expect(input).toHaveFocus();
+          expect(input).toHaveAttribute('aria-expanded', 'false');
+          expect(input).not.toHaveAttribute('aria-activedescendant');
+          expect(
+            screen.queryByRole('button', {name: 'Apply', hidden: true}),
+          ).not.toBeInTheDocument();
+        });
+
+        await user.keyboard('{ArrowDown}');
+        await waitFor(() =>
+          expect(input).toHaveAttribute('aria-expanded', 'true'),
+        );
+        expect(
+          screen.getByRole('option', {name: 'Title', hidden: true}),
+        ).toBeInTheDocument();
+        expect(
+          document.getElementById(
+            input.getAttribute('aria-activedescendant') ?? '',
+          ),
+        ).toHaveAttribute('role', 'option');
+        await user.keyboard('{Escape}');
+        await waitFor(() =>
+          expect(input).toHaveAttribute('aria-expanded', 'false'),
+        );
+        expect(input).not.toHaveAttribute('aria-activedescendant');
+        expect(input).toHaveFocus();
+        await user.click(input);
+        await waitFor(() =>
+          expect(input).toHaveAttribute('aria-expanded', 'true'),
+        );
+      },
+    );
   });
 
   it('clears all added filters when the clear button is clicked', async () => {

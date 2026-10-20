@@ -1,0 +1,21 @@
+{
+  "mode": "before",
+  "browser": "149.0.7827.55",
+  "viewport": {
+    "width": 900,
+    "height": 600
+  },
+  "geometry": {
+    "visualWidth": 16,
+    "visualHeight": 16,
+    "afterWidth": 44,
+    "afterHeight": 44,
+    "inset": "-14px"
+  },
+  "valueClick": {
+    "x": 116.90625,
+    "y": 32
+  },
+  "valueClickOutcome": "filter removed; editor not opened",
+  "pass": true
+}

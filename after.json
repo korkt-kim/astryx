@@ -1,0 +1,22 @@
+{
+  "mode": "after",
+  "browser": "149.0.7827.55",
+  "viewport": {
+    "width": 900,
+    "height": 600
+  },
+  "geometry": {
+    "visualWidth": 16,
+    "visualHeight": 16,
+    "afterWidth": 24,
+    "afterHeight": 24,
+    "inset": "-4px"
+  },
+  "valueClick": {
+    "x": 116.90625,
+    "y": 32
+  },
+  "valueClickOutcome": "editor opened; both filters retained",
+  "expandedRemoveOutcome": "only Status removed",
+  "pass": true
+}

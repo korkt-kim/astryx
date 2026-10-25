@@ -3,10 +3,11 @@
 /**
  * @file BaseTypeahead.test.tsx
  * @input BaseTypeahead public props, synchronous and asynchronous SearchSources
- * @output Combobox contracts, including disabled focus, activation, and stale work
+ * @output Combobox contracts, including disabled capture/bubble activation guards, inspection, and stale work
  * @position Colocated verification for BaseTypeahead
  */
 
+import {createRef} from 'react';
 import {afterAll, beforeAll, describe, expect, it, vi} from 'vitest';
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -306,6 +307,156 @@ describe('BaseTypeahead', () => {
     expect(queryEntries).not.toHaveBeenCalled();
     expect(input).toHaveValue('');
   });
+
+  it.each([
+    ['keyDown', 'onKeyDownCapture', 'onKeyDown'],
+    ['keyPress', 'onKeyPressCapture', 'onKeyPress'],
+    ['keyUp', 'onKeyUpCapture', 'onKeyUp'],
+    ['click', 'onClickCapture', 'onClick'],
+    ['doubleClick', 'onDoubleClickCapture', 'onDoubleClick'],
+    ['auxClick', 'onAuxClickCapture', 'onAuxClick'],
+    ['pointerDown', 'onPointerDownCapture', 'onPointerDown'],
+    ['pointerUp', 'onPointerUpCapture', 'onPointerUp'],
+    ['mouseDown', 'onMouseDownCapture', 'onMouseDown'],
+    ['mouseUp', 'onMouseUpCapture', 'onMouseUp'],
+    ['touchStart', 'onTouchStartCapture', 'onTouchStart'],
+    ['touchEnd', 'onTouchEndCapture', 'onTouchEnd'],
+  ] as const)(
+    'withholds %s activation callbacks in both phases only while disabled',
+    (event, capture, bubble) => {
+      const calls: string[] = [];
+      const ref = createRef<HTMLInputElement>();
+      const handlers = {
+        [capture]: () => calls.push('capture'),
+        [bubble]: () => calls.push('bubble'),
+      };
+      const field = (isDisabled: boolean) => (
+        <BaseTypeahead
+          searchSource={emptySource}
+          value={null}
+          onChange={vi.fn()}
+          ref={ref}
+          isDisabled={isDisabled}
+          {...handlers}
+        />
+      );
+      const {rerender} = render(field(false));
+      const input = screen.getByRole('combobox');
+      const activate = () =>
+        event === 'auxClick'
+          ? fireEvent(input, new MouseEvent('auxclick', {bubbles: true}))
+          : fireEvent[event](input, {key: 'Enter', charCode: 13});
+      activate();
+      expect(calls).toEqual(['capture', 'bubble']);
+      calls.length = 0;
+
+      rerender(field(true));
+      expect(ref.current).toBe(input);
+      expect(input).toHaveAttribute('aria-disabled', 'true');
+      activate();
+      expect(calls).toEqual([]);
+
+      rerender(field(false));
+      expect(ref.current).toBe(input);
+      activate();
+      expect(calls).toEqual(['capture', 'bubble']);
+    },
+  );
+
+  it('preserves disabled focus, hover, context-menu, selection, and copy inspection', async () => {
+    const user = userEvent.setup();
+    const onFocus = vi.fn();
+    const onFocusCapture = vi.fn();
+    const onBlur = vi.fn();
+    const onBlurCapture = vi.fn();
+    const onPointerEnter = vi.fn();
+    const onMouseMove = vi.fn();
+    const onSelect = vi.fn();
+    const onCopy = vi.fn();
+    const onCopyCapture = vi.fn();
+    const onContextMenu = vi.fn();
+    const field = (isDisabled: boolean) => (
+      <>
+        <button type="button">Before</button>
+        <BaseTypeahead
+          searchSource={emptySource}
+          value={null}
+          onChange={vi.fn()}
+          isDisabled={isDisabled}
+          onFocus={onFocus}
+          onFocusCapture={onFocusCapture}
+          onBlur={onBlur}
+          onBlurCapture={onBlurCapture}
+          onPointerEnter={onPointerEnter}
+          onMouseMove={onMouseMove}
+          onSelect={onSelect}
+          onCopy={onCopy}
+          onCopyCapture={onCopyCapture}
+          onContextMenu={onContextMenu}
+        />
+        <button type="button">After</button>
+      </>
+    );
+    const {rerender} = render(field(false));
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, {target: {value: 'Inspect text'}});
+    rerender(field(true));
+    await user.tab();
+    await user.tab();
+    expect(input).toHaveFocus();
+    expect(onFocus).toHaveBeenCalledOnce();
+    expect(onFocusCapture).toHaveBeenCalledOnce();
+    fireEvent.select(input, {target: {selectionStart: 0, selectionEnd: 12}});
+    expect(onSelect).toHaveBeenCalled();
+    const clipboard = await user.copy();
+    expect(clipboard?.getData('text/plain')).toBe('Inspect text');
+    expect(onCopy).toHaveBeenCalledOnce();
+    expect(onCopyCapture).toHaveBeenCalledOnce();
+    fireEvent.pointerEnter(input);
+    fireEvent.mouseMove(input);
+    expect(onPointerEnter).toHaveBeenCalledOnce();
+    expect(onMouseMove).toHaveBeenCalledOnce();
+    expect(fireEvent.contextMenu(input)).toBe(true);
+    expect(onContextMenu).toHaveBeenCalledOnce();
+    // Withhold activation callbacks without cancelling native word selection.
+    expect(fireEvent.doubleClick(input)).toBe(true);
+    expect(input).toHaveValue('Inspect text');
+    await user.tab();
+    expect(screen.getByRole('button', {name: 'After'})).toHaveFocus();
+    expect(onBlur).toHaveBeenCalledOnce();
+    expect(onBlurCapture).toHaveBeenCalledOnce();
+  });
+
+  it.each(['onKeyDownCapture', 'onKeyDown'] as const)(
+    'preserves enabled %s cancellation before internal selection',
+    async handler => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const onKeyUp = vi.fn();
+      const cancel = vi.fn((event: React.KeyboardEvent) =>
+        event.preventDefault(),
+      );
+      render(
+        <BaseTypeahead
+          searchSource={{search: () => [], bootstrap: () => [resultItem]}}
+          value={null}
+          onChange={onChange}
+          hasEntriesOnFocus
+          {...{[handler]: cancel}}
+          onKeyUp={onKeyUp}
+        />,
+      );
+      await user.tab();
+      const input = screen.getByRole('combobox');
+      expect(input).toHaveAttribute('aria-expanded', 'true');
+      onKeyUp.mockClear();
+      await user.keyboard('{Enter}');
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(onKeyUp).toHaveBeenCalledOnce();
+      expect(onChange).not.toHaveBeenCalled();
+      expect(input).toHaveAttribute('aria-expanded', 'true');
+    },
+  );
 
   it('ignores isFocusableDisabled on an enabled input and preserves an explicit Tab exclusion', async () => {
     const user = userEvent.setup();

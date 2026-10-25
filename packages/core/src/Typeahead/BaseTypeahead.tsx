@@ -5,7 +5,7 @@
 /**
  * @file BaseTypeahead.tsx
  * @input Uses React, StyleX, usePopover, TypeaheadItem
- * @output Exports BaseTypeahead; disabled inputs keep focus and reject activation or stale work
+ * @output Exports BaseTypeahead; disabled inputs keep focus/inspection and guard capture/bubble activation or stale work
  * @position Core implementation; used by Typeahead and Tokenizer
  *
  * Pure combobox engine: input, search, keyboard navigation, dropdown.
@@ -1228,10 +1228,47 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
     };
   }, []);
 
+  // BaseProps also accepts activation handlers outside the owned bubble
+  // handlers below. Guard each phase rather than stopping propagation or
+  // cancelling pointer defaults: focus, text selection, copy, context menus,
+  // and hover inspection must still work on the read-only disabled input.
+  function guardInputActivation<E extends React.SyntheticEvent>(
+    handler: ((event: E) => void) | undefined,
+  ) {
+    return handler
+      ? (event: E) => {
+          if (!disabledRef.current) {
+            handler(event);
+          }
+        }
+      : undefined;
+  }
+
   return (
     <>
       <input
         {...rest}
+        onKeyDownCapture={guardInputActivation(rest.onKeyDownCapture)}
+        onKeyPressCapture={guardInputActivation(rest.onKeyPressCapture)}
+        onKeyPress={guardInputActivation(rest.onKeyPress)}
+        onKeyUpCapture={guardInputActivation(rest.onKeyUpCapture)}
+        onKeyUp={guardInputActivation(rest.onKeyUp)}
+        onClickCapture={guardInputActivation(rest.onClickCapture)}
+        onDoubleClickCapture={guardInputActivation(rest.onDoubleClickCapture)}
+        onDoubleClick={guardInputActivation(rest.onDoubleClick)}
+        onAuxClickCapture={guardInputActivation(rest.onAuxClickCapture)}
+        onAuxClick={guardInputActivation(rest.onAuxClick)}
+        onPointerDownCapture={guardInputActivation(rest.onPointerDownCapture)}
+        onPointerUpCapture={guardInputActivation(rest.onPointerUpCapture)}
+        onPointerUp={guardInputActivation(rest.onPointerUp)}
+        onMouseDownCapture={guardInputActivation(rest.onMouseDownCapture)}
+        onMouseDown={guardInputActivation(rest.onMouseDown)}
+        onMouseUpCapture={guardInputActivation(rest.onMouseUpCapture)}
+        onMouseUp={guardInputActivation(rest.onMouseUp)}
+        onTouchStartCapture={guardInputActivation(rest.onTouchStartCapture)}
+        onTouchStart={guardInputActivation(rest.onTouchStart)}
+        onTouchEndCapture={guardInputActivation(rest.onTouchEndCapture)}
+        onTouchEnd={guardInputActivation(rest.onTouchEnd)}
         ref={useMergedRefs(ref, inputRef, fallbackAnchorRef)}
         id={inputId}
         type="text"

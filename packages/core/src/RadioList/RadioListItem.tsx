@@ -5,7 +5,7 @@
 /**
  * @file RadioListItem.tsx
  * @input Uses React use, useCallback, useId, useRef, RadioListContext, Item
- * @input Guards owned-radio activation; isolates native names across same-commit form transitions
+ * @input Guards owned-radio activation; synchronizes native groups at member commit/detach
  * @output Exports RadioListItem component, RadioListItemProps
  * @position Core implementation; consumed by index.ts, tested by RadioList.test.tsx
  *
@@ -25,6 +25,8 @@ import type {StyleXStyles} from '@stylexjs/stylex';
 import type {BaseProps} from '../BaseProps';
 import {RadioListContext} from './RadioList';
 import {RadioListNativeNameContext} from './RadioListNativeNameContext';
+import {RadioListNativeSyncContext} from './RadioListNativeSyncContext';
+import {useIsomorphicLayoutEffect} from '../hooks/useIsomorphicLayoutEffect';
 import {colorVars, radiusVars} from '../theme/tokens.stylex';
 import {mergeProps, isRenderable, rtlStyles} from '../utils';
 import {indicatorScope} from '../Indicator/indicator.markers.stylex';
@@ -263,6 +265,7 @@ export function RadioListItem({
   const pressable = usePressFeedback();
   const context = use(RadioListContext);
   const disabledName = use(RadioListNativeNameContext);
+  const nativeSync = use(RadioListNativeSyncContext);
   if (!context) {
     throw new Error('RadioListItem must be used within an RadioList');
   }
@@ -303,6 +306,7 @@ export function RadioListItem({
         // Restore on attachment too: StrictMode can replay the ref without a
         // host update. Render owns the final name and form, including SSR.
         radio.name = nativeName;
+        nativeSync?.sync(radio);
         return () => {
           // React detaches the old ref before updating `form`, then commits
           // `name`/`checked`. Release an enabled radio's public group before
@@ -312,12 +316,22 @@ export function RadioListItem({
           if (!isDisabled) {
             radio.name = '';
           }
+          nativeSync?.detach(radio);
           radioRef.current = null;
         };
       }
     },
-    [isDisabled, nativeName],
+    [isDisabled, nativeName, nativeSync],
   );
+
+  // A child can update without rendering RadioList. Finish native required/Tab
+  // normalization before that child's consumer layout effects, including when
+  // checked state changes without changing the input ref. No resource is held.
+  useIsomorphicLayoutEffect(() => {
+    if (radioRef.current) {
+      nativeSync?.sync(radioRef.current);
+    }
+  });
 
   // Guard every accepted keyboard phase before the consumer can act. Keep the
   // event itself intact for group observers and independent caller children.

@@ -5,7 +5,7 @@
 /**
  * @file RadioList.tsx
  * @input Uses React useId, useCallback, useRef, layer-scoped context, ReactNode, Field, InputStatus
- * @input Shares a private disabled native name; synchronizes split native groups by form owner and name
+ * @input Owns private native-name and member-commit synchronization for split native groups
  * @output Exports RadioList component, RadioListProps, RadioListContext
  * @position Core implementation; consumed by index.ts, tested by RadioList.test.tsx
  *
@@ -42,6 +42,7 @@ import {
 import type {SizeValue} from '../utils/types';
 import {themeProps} from '../utils/themeProps';
 import {RadioListNativeNameContext} from './RadioListNativeNameContext';
+import {RadioListNativeSyncContext} from './RadioListNativeSyncContext';
 
 /**
  * Size of the radio controls, matching CheckboxInput sizes.
@@ -296,17 +297,40 @@ export function RadioList({
   // members remain skipped unless every member is off.
   // Query the mounted controls rather than interpreting opaque children or
   // assuming that the controlled value matches an option.
-  useIsomorphicLayoutEffect(() => {
-    const group = groupRef.current;
-    if (!group) {
-      return;
-    }
-    const syncTabStops = () => {
+  // Ref cleanup precedes host removal. Keep departures across prop updates,
+  // without retaining removed nodes beyond this group's lifetime.
+  const detachedRef = useRef(new WeakSet<HTMLInputElement>());
+  const nativeSync = useMemo(() => {
+    const normalize = (element: HTMLElement, committed: boolean) => {
+      // Member effects/ref attachment precede the group's ref on first mount.
+      const group = element.closest('[role="radiogroup"]');
+      if (!group) {
+        return;
+      }
       const radios = Array.from(
         group.querySelectorAll<HTMLInputElement>(
           'input[data-radio-list-input]',
         ),
-      ).filter(radio => radio.closest('[role="radiogroup"]') === group);
+      ).filter(
+        radio =>
+          radio.closest('[role="radiogroup"]') === group &&
+          (committed || !detachedRef.current.has(radio)),
+      );
+      if (committed) {
+        for (const radio of radios) {
+          // StrictMode can replay a later sibling's ref after this member's
+          // consumer effect. All form mutations are already complete here:
+          // restore only enabled names released by our own ref cleanups.
+          if (
+            detachedRef.current.has(radio) &&
+            radio.name === '' &&
+            radio.getAttribute('aria-disabled') !== 'true'
+          ) {
+            radio.name = name;
+          }
+        }
+        detachedRef.current = new WeakSet();
+      }
       const checked = radios.find(radio => radio.checked);
       const hasAvailableItem = radios.some(
         radio => !radio.hasAttribute('data-radio-item-disabled'),
@@ -358,10 +382,31 @@ export function RadioList({
             : 0;
       }
     };
-    syncTabStops();
-    // A child may mount, unmount, disable, or hide an option without rerendering
-    // this group. Observe eligibility changes, but not our own tabindex writes.
-    const observer = new MutationObserver(syncTabStops);
+    return {
+      sync(element: HTMLElement) {
+        // All host mutations are complete at attachment/layout or observation.
+        // Include later siblings even before their refs attach, and restore
+        // members whose refs were only replayed by StrictMode.
+        normalize(element, true);
+      },
+      detach(radio: HTMLInputElement) {
+        detachedRef.current.add(radio);
+        normalize(radio, false);
+      },
+    };
+  }, [isRequired, name]);
+
+  useIsomorphicLayoutEffect(() => {
+    const group = groupRef.current;
+    if (!group) {
+      return;
+    }
+    const sync = () => nativeSync.sync(group);
+    sync();
+    // Member commits synchronize immediately through the private bridge. Keep
+    // observing independent caller-owned row visibility/DOM changes, but not
+    // our own required/tabindex writes. This group owns the observer's lifetime.
+    const observer = new MutationObserver(sync);
     observer.observe(group, {
       subtree: true,
       childList: true,
@@ -584,7 +629,9 @@ export function RadioList({
         )}>
         <RadioListContext value={contextValue}>
           <RadioListNativeNameContext value={`${autoName}-disabled`}>
-            {children}
+            <RadioListNativeSyncContext value={nativeSync}>
+              {children}
+            </RadioListNativeSyncContext>
           </RadioListNativeNameContext>
         </RadioListContext>
       </div>

@@ -4,7 +4,7 @@
  * @file TransferListSelector.test.tsx
  * @input Uses TransferListSelector, React state, Vitest, and Testing Library
  * @output Unit coverage for immediate and staged commits, uncontrolled dismissal, synchronization, disabled states, defaults, and prop forwarding
- * @position Lab component test; validates the TransferListSelector public contract
+ * @position Lab tests; validates TransferListSelector and inherited focusable-disabled Buttons
  *
  * SYNC: When TransferListSelector.tsx behavior changes, update this test.
  */
@@ -458,9 +458,9 @@ describe('TransferListSelector', () => {
       name: 'Apply',
       hidden: true,
     });
-    expect(cancel).toBeEnabled();
+    expect(cancel).not.toHaveAttribute('aria-disabled', 'true');
     expect(fieldset).not.toContainElement(cancel);
-    expect(apply).toBeDisabled();
+    expect(apply).toHaveAttribute('aria-disabled', 'true');
     expect(
       screen.getByRole('combobox', {name: 'Visible fields'}),
     ).toHaveAttribute('aria-disabled', 'true');
@@ -485,10 +485,10 @@ describe('TransferListSelector', () => {
     expect(dialog.querySelector('fieldset')).toBeEnabled();
     expect(
       within(dialog).getByRole('button', {name: 'Cancel', hidden: true}),
-    ).toBeEnabled();
+    ).not.toHaveAttribute('aria-disabled', 'true');
     expect(
       within(dialog).getByRole('button', {name: 'Apply', hidden: true}),
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('keeps focus on the activated row control while a change is pending', async () => {

@@ -1,5 +1,11 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @input CommentComposer, React state, and Testing Library
+ * @output Composer behavior and inherited focusable-disabled action coverage
+ * @position Colocated CommentComposer regression tests
+ */
+
 import {useState} from 'react';
 import {act, fireEvent, render, screen, within} from '@testing-library/react';
 import {
@@ -89,7 +95,9 @@ describe('CommentComposer', () => {
       <CommentComposer value="" onChange={() => {}} onSubmit={onSubmit} />,
     );
     const post = screen.getByRole('button', {name: /send/i});
-    expect(post).toBeDisabled();
+    expect(post).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(post);
+    expect(onSubmit).not.toHaveBeenCalled();
     rerender(
       <CommentComposer
         value="Looks good"

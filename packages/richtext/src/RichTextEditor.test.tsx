@@ -7,7 +7,7 @@
  *   accessible label wiring, shared input visuals/status variants, theme-target
  *   metadata, placeholder semantics, canonical link-dialog layout, top-toolbar
  *   ordering and horizontal scrolling, and the read-only vs disabled split
- *   with editable-state sync across prop toggles
+ *   with editable-state sync and focusable-disabled formatting controls
  * @position Testing; validates RichTextEditor.tsx and RichTextView.tsx
  *
  * SYNC: When the editor components change, update these tests to match.
@@ -1500,7 +1500,10 @@ describe('RichTextEditorToolbar', () => {
         toolbar={<RichTextEditorToolbar />}
       />,
     );
-    expect(screen.getByRole('button', {name: 'Bold'})).toBeDisabled();
+    expect(screen.getByRole('button', {name: 'Bold'})).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 
   it('renders a theme-registered icon override for a richtext:* key', () => {
@@ -2188,12 +2191,18 @@ describe('toolbar follows the editable props after mount', () => {
         toolbar={<RichTextEditorToolbar />}
       />,
     );
-    expect(screen.getByRole('button', {name: 'Bold'})).toBeDisabled();
+    expect(screen.getByRole('button', {name: 'Bold'})).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
 
     rerender(
       <RichTextEditor label="Notes" toolbar={<RichTextEditorToolbar />} />,
     );
-    expect(screen.getByRole('button', {name: 'Bold'})).toBeEnabled();
+    expect(screen.getByRole('button', {name: 'Bold'})).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
 
     rerender(
       <RichTextEditor
@@ -2202,7 +2211,10 @@ describe('toolbar follows the editable props after mount', () => {
         toolbar={<RichTextEditorToolbar />}
       />,
     );
-    expect(screen.getByRole('button', {name: 'Bold'})).toBeDisabled();
+    expect(screen.getByRole('button', {name: 'Bold'})).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 });
 

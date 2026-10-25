@@ -3,7 +3,7 @@
 /**
  * @file useTablePagination.test.tsx
  * @input useTablePagination, Table, Pagination, React testing utilities
- * @output Functional tests for the pagination plugin
+ * @output Pagination plugin tests including inherited focusable-disabled Buttons
  * @position Test file; validates pagination hook behavior, data slicing, plugin rendering
  */
 
@@ -544,7 +544,7 @@ describe('useTablePagination', () => {
       const nextButton = screen.getByRole('button', {
         name: 'Go to next page',
       });
-      expect(nextButton).not.toBeDisabled();
+      expect(nextButton).not.toHaveAttribute('aria-disabled', 'true');
     });
 
     it('passes onPageSizeChange and pageSizeOptions', () => {
@@ -606,8 +606,8 @@ describe('useTablePagination', () => {
       const nextButton = screen.getByRole('button', {
         name: 'Go to next page',
       });
-      expect(prevButton).toBeDisabled();
-      expect(nextButton).toBeDisabled();
+      expect(prevButton).toHaveAttribute('aria-disabled', 'true');
+      expect(nextButton).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('handles rapid page changes', async () => {
@@ -660,7 +660,8 @@ describe('useTablePagination', () => {
       const prevButton = screen.getByRole('button', {
         name: 'Go to previous page',
       });
-      expect(prevButton).toBeDisabled();
+      expect(prevButton).toHaveAttribute('aria-disabled', 'true');
+      expect(prevButton).not.toHaveAttribute('disabled');
     });
   });
 });

@@ -1,5 +1,11 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @input Comments, controlled fixtures, and Testing Library
+ * @output Comment lifecycle and inherited focusable-disabled reaction coverage
+ * @position Colocated Comments regression tests
+ */
+
 import {useState, type ReactNode} from 'react';
 import {
   act,
@@ -478,7 +484,7 @@ describe('Comments rendering', () => {
     const article = articleByAuthor('Avery Kim');
     expect(
       within(article).getByRole('button', {name: 'Like: 2'}),
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
     expect(within(article).queryByRole('button', {name: 'Reply'})).toBeNull();
     expect(
       within(article).queryByRole('button', {

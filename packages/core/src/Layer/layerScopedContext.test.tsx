@@ -3,7 +3,7 @@
 /**
  * @file layerScopedContext.test.tsx
  * @input Scoped context boundaries and grouped controls
- * @output Whole membership, local ownership, and state preservation regressions
+ * @output Membership, local ownership, and focusable-disabled state preservation regressions
  * @position Behavior coverage for AST-038 provider boundaries
  */
 
@@ -436,15 +436,21 @@ describe.each(boundaries)('%s provider boundary', (name, boundary) => {
         )}
       </ButtonGroup>,
     );
-    expect(screen.getByRole('button', {name: 'Outer member'})).toBeDisabled();
+    expect(screen.getByRole('button', {name: 'Outer member'})).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
     const independent = screen.getByRole('button', {name: 'Independent'});
-    expect(independent).toBeEnabled();
+    expect(independent).not.toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(independent);
     expect(press).toHaveBeenCalledOnce();
     expect(
       screen.getByRole('button', {name: 'Explicit disabled'}),
-    ).toBeDisabled();
-    expect(screen.getByRole('button', {name: 'Inner member'})).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', {name: 'Inner member'})).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 
   it('ends group-owned labels without changing the content input label', () => {

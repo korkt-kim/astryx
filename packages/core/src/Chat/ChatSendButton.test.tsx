@@ -4,7 +4,7 @@
  * @file ChatSendButton.test.tsx
  * @input Uses vitest, @testing-library/react, the global icon registry
  * @output Unit tests for ChatSendButton
- * @position Colocated unit test; covers labels and icons, disabled rules,
+ * @position Colocated unit test; covers labels and icons, focusable-disabled rules,
  *   composed consumer clicks, state-action routing, and ChatComposer defaults
  */
 
@@ -32,12 +32,19 @@ describe('ChatSendButton', () => {
 
     it('is disabled with no composer context and no isDisabled prop', () => {
       render(<ChatSendButton />);
-      expect(screen.getByRole('button', {name: 'Send'})).toBeDisabled();
+      const send = screen.getByRole('button', {name: 'Send'});
+      expect(send).toHaveAttribute('aria-disabled', 'true');
+      expect(send).not.toHaveAttribute('disabled');
+      send.focus();
+      expect(send).toHaveFocus();
     });
 
     it('is enabled when isDisabled is explicitly false', () => {
       render(<ChatSendButton isDisabled={false} onSend={() => {}} />);
-      expect(screen.getByRole('button', {name: 'Send'})).toBeEnabled();
+      expect(screen.getByRole('button', {name: 'Send'})).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
     });
 
     it('forwards ref, className, data, and ARIA inputs to the Button root', () => {
@@ -212,7 +219,10 @@ describe('ChatSendButton', () => {
 
     it('stays enabled even when isDisabled is set', () => {
       render(<ChatSendButton isStopShown isDisabled onStop={() => {}} />);
-      expect(screen.getByRole('button', {name: 'Stop'})).toBeEnabled();
+      expect(screen.getByRole('button', {name: 'Stop'})).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
     });
 
     it('routes the click to onStop and never to onSend', () => {
@@ -251,7 +261,7 @@ describe('ChatSendButton', () => {
       const onClick = vi.fn();
       render(<ChatSendButton isStopShown onClick={onClick} />);
       const stop = screen.getByRole('button', {name: 'Stop'});
-      expect(stop).toBeEnabled();
+      expect(stop).not.toHaveAttribute('aria-disabled', 'true');
       fireEvent.click(stop);
       expect(onClick).toHaveBeenCalledTimes(1);
     });
@@ -294,13 +304,16 @@ describe('ChatSendButton', () => {
         <ChatComposer onSubmit={onSubmit} value="" input={<div />} />,
       );
       // Empty composer — nothing to send.
-      expect(screen.getByRole('button', {name: 'Send'})).toBeDisabled();
+      expect(screen.getByRole('button', {name: 'Send'})).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
 
       rerender(
         <ChatComposer onSubmit={onSubmit} value="hello" input={<div />} />,
       );
       const send = screen.getByRole('button', {name: 'Send'});
-      expect(send).toBeEnabled();
+      expect(send).not.toHaveAttribute('aria-disabled', 'true');
 
       fireEvent.click(send);
       expect(onSubmit).toHaveBeenCalledWith('hello');

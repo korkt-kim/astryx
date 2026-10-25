@@ -1,5 +1,11 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @input ChatDictationButton, speech-recognition state, and Testing Library
+ * @output Coverage for dictation state and inherited focusable disablement
+ * @position Colocated ChatDictationButton regression tests
+ */
+
 import {createRef} from 'react';
 import {describe, it, expect, vi} from 'vitest';
 import {fireEvent, render, screen} from '@testing-library/react';
@@ -84,7 +90,7 @@ describe('ChatDictationButton', () => {
 
     expect(
       screen.getByRole('button', {name: 'Start dictation'}),
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('forwards the root ref and accepted span props', () => {

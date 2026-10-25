@@ -4,7 +4,7 @@
  * @file ListInput.test.tsx
  * @input Uses Vitest, Testing Library, and the controlled ListInput API
  * @output Behavioral coverage for list editing, pointer-stable adding, tokenized mutation motion, validation, focus, the hover-revealed reorder grip that hangs beside the first field, and free-floating stationary-list reordering
- * @position Lab tests; validates ListInput.tsx
+ * @position Lab tests; validates ListInput.tsx and inherited focusable-disabled Buttons
  *
  * SYNC: When ListInput.tsx behavior changes, update these tests.
  */
@@ -291,7 +291,10 @@ describe('ListInput', () => {
       screen.getByRole('heading', {name: 'No guests yet'}),
     ).toBeInTheDocument();
     expect(screen.getByText('Add a guest to get started.')).toBeInTheDocument();
-    expect(screen.getByRole('button', {name: 'Add guest'})).toBeEnabled();
+    expect(screen.getByRole('button', {name: 'Add guest'})).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 
   it('emits add and remove changes with the affected item and index', () => {
@@ -794,7 +797,7 @@ describe('ListInput', () => {
         expect(classTokens(removeCell ?? null)).toEqual(
           expect.arrayContaining(reveal.grip),
         );
-        expect(remove).toBeEnabled();
+        expect(remove).not.toHaveAttribute('aria-disabled', 'true');
         expect(remove).not.toHaveAttribute('tabindex', '-1');
       });
       unmount();
@@ -973,9 +976,12 @@ describe('ListInput', () => {
 
     renderListInput({maxItems: 2, onChange});
 
-    expect(screen.getByRole('button', {name: 'Add guest'})).toBeDisabled();
+    const add = screen.getByRole('button', {name: 'Add guest'});
+    expect(add).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(add);
+    expect(onChange).not.toHaveBeenCalled();
     const remove = screen.getByRole('button', {name: 'Remove guest 1'});
-    expect(remove).toBeEnabled();
+    expect(remove).not.toHaveAttribute('aria-disabled', 'true');
 
     fireEvent.click(remove);
     expect(onChange).toHaveBeenCalledWith([guests[1]], {
@@ -1354,12 +1360,14 @@ describe('ListInput', () => {
     for (const field of screen.getAllByRole('textbox')) {
       expect(field).toBeDisabled();
     }
-    expect(screen.getByRole('button', {name: /add guest/i})).toBeDisabled();
+    expect(screen.getByRole('button', {name: /add guest/i})).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
     expect(
       screen.getByRole('button', {name: 'Reorder guest 1'}),
     ).toBeDisabled();
-    // Remove carries a tooltip, so it is disabled via aria and stays focusable
-    // rather than dropping out of the tab order with its explanation.
+    // Button-backed mutations retain focus and their tooltip descriptions.
     expect(
       screen.getByRole('button', {name: 'Remove guest 1'}),
     ).toHaveAttribute('aria-disabled', 'true');

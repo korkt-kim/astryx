@@ -3,7 +3,7 @@
 /**
  * @file Drawer.test.tsx
  * @input Uses vitest, @testing-library/react, Drawer component
- * @output Unit tests for Drawer component behavior
+ * @output Drawer behavior and focusable-disabled Button group-boundary coverage
  * @position Core testing; validates Drawer.tsx implementation
  *
  * SYNC: When Drawer.tsx changes, update tests to match new behavior
@@ -472,15 +472,19 @@ describe('Drawer', () => {
           </Drawer>
         </ButtonGroup>,
       );
-      expect(screen.getByRole('button', {name: 'Outer member'})).toBeDisabled();
+      expect(
+        screen.getByRole('button', {name: 'Outer member'}),
+      ).toHaveAttribute('aria-disabled', 'true');
       const independent = screen.getByRole('button', {name: 'Independent'});
-      expect(independent).toBeEnabled();
+      expect(independent).not.toHaveAttribute('aria-disabled', 'true');
       fireEvent.click(independent);
       expect(press).toHaveBeenCalledOnce();
       expect(
         screen.getByRole('button', {name: 'Explicit disabled'}),
-      ).toBeDisabled();
-      expect(screen.getByRole('button', {name: 'Inner member'})).toBeDisabled();
+      ).toHaveAttribute('aria-disabled', 'true');
+      expect(
+        screen.getByRole('button', {name: 'Inner member'}),
+      ).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('keeps unrelated application contexts flowing into drawer content', () => {

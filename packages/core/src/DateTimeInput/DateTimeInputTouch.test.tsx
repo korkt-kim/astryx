@@ -3,7 +3,7 @@
 /**
  * @file DateTimeInputTouch.test.tsx
  * @input Uses vitest, @testing-library/react, DateTimeInput touch surface
- * @output Focused coverage for DateTimeInput's coarse-pointer bottom-sheet picker
+ * @output Coverage for DateTimeInput's coarse-pointer picker and focusable-disabled actions
  * @position Test file for /packages/core/src/DateTimeInput/
  *
  * Every test renders through a wrapper that passes `nativePicker="never"`, so
@@ -699,7 +699,7 @@ describe('DateTimeInput touch surface', () => {
       openDateSheet();
       const saveDateButton = screen.getByRole('button', {name: 'Save date'});
 
-      expect(saveDateButton).toBeDisabled();
+      expect(saveDateButton).toHaveAttribute('aria-disabled', 'true');
       fireEvent.click(saveDateButton);
       expect(screen.getByRole('radio', {name: 'Date'})).toHaveAttribute(
         'aria-checked',
@@ -715,13 +715,13 @@ describe('DateTimeInput touch surface', () => {
       render(<ControlledDateTimeInput />);
       openDateSheet();
       const saveDateButton = screen.getByRole('button', {name: 'Save date'});
-      expect(saveDateButton).toBeDisabled();
+      expect(saveDateButton).toHaveAttribute('aria-disabled', 'true');
 
       fireEvent.click(
         screen.getByRole('button', {name: 'Saturday, March 21, 2026'}),
       );
       expect(dateField()).toHaveValue('March 21, 2026');
-      expect(saveDateButton).not.toBeDisabled();
+      expect(saveDateButton).not.toHaveAttribute('aria-disabled', 'true');
 
       fireEvent.click(saveDateButton);
       expect(dateField()).toHaveAttribute('aria-expanded', 'false');
@@ -744,11 +744,11 @@ describe('DateTimeInput touch surface', () => {
       );
       openDateSheet();
       const saveDateButton = screen.getByRole('button', {name: 'Save date'});
-      expect(saveDateButton).not.toBeDisabled();
+      expect(saveDateButton).not.toHaveAttribute('aria-disabled', 'true');
 
       fireEvent.click(screen.getByRole('button', {name: 'Reset'}));
       expect(dateField()).toHaveValue('');
-      expect(saveDateButton).toBeDisabled();
+      expect(saveDateButton).toHaveAttribute('aria-disabled', 'true');
 
       fireEvent.click(saveDateButton);
       expect(screen.getByRole('radio', {name: 'Date'})).toHaveAttribute(

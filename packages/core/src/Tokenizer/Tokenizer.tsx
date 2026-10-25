@@ -5,9 +5,9 @@
 /**
  * @file Tokenizer.tsx
  * @input Uses React, BaseTypeahead, Field, Token, useAnnounce
- * @output Exports Tokenizer multi-select typeahead component
- * @position Composed component; forwards DOM ref and exposes focus control via
- *   handleRef
+ * @output Exports Tokenizer with disabled guards for token commits and form values
+ * @position Composed component; preserves the input while guarding add/remove/clear,
+ *   forwards DOM ref, and exposes focus control via handleRef
  *
  * SYNC: When modified, update:
  * - /packages/core/src/Tokenizer/index.ts
@@ -162,14 +162,18 @@ export interface TokenizerProps<T extends SearchableItem> extends Omit<
 
   /**
    * The HTML name attribute for form submissions. When set, hidden inputs
-   * carry one entry per selected item's id under this name.
+   * carry one entry per selected item's id under this name while enabled.
+   * Disabled tokenizers contribute no form entries.
    */
   htmlName?: string;
-  /** Callback when selection changes. Includes change metadata. */
+  /** Callback when selection changes. Includes change metadata; blocked while disabled. */
   onChange: (items: T[], change: TokenizerChange<T>) => void;
   /** Render function for dropdown items. Default: TypeaheadItem. */
   renderItem?: (item: T) => ReactNode;
-  /** Render function for selected tokens. Default: Token with label + onRemove. */
+  /**
+   * Render function for selected tokens. Default: Token with label + onRemove.
+   * The supplied onRemove callback does nothing while disabled.
+   */
   renderToken?: (item: T, onRemove: () => void) => ReactNode;
   /** Max number of selections. */
   maxEntries?: number;
@@ -216,8 +220,7 @@ export interface TokenizerProps<T extends SearchableItem> extends Omit<
    * reason is discoverable by keyboard and assistive technology. Input stays
    * blocked.
    *
-   * Use this instead of wrapping a disabled tokenizer in `Tooltip` — disabled
-   * controls don't emit the pointer events an external tooltip needs.
+   * Prefer this to an external Tooltip so the reason is associated with the input.
    */
   disabledMessage?: string;
   /** Show clear button (clears all tokens). @default false */
@@ -603,10 +606,9 @@ export function Tokenizer<T extends SearchableItem>({
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Disabled-reason tooltip. Disabled controls swallow pointer events, so the
-  // tooltip listeners attach to the input wrapper and the typeahead input stays
-  // perceivable via aria-disabled instead of the disabled attribute. Input is
-  // blocked by the isDisabled guards in BaseTypeahead and handleWrapperClick.
+  // The wrapper listens for hover and bubbled input focus to expose the reason.
+  // Token mutations are guarded at their shared add/remove/clear boundaries;
+  // BaseTypeahead owns the input's editing and popup behavior.
   const showsDisabledMessage = isDisabled && !!disabledMessage;
   const disabledMessageTooltip = useTooltip({
     placement: 'above',
@@ -803,7 +805,7 @@ export function Tokenizer<T extends SearchableItem>({
   // Handle adding an item — detect creatable synthetic items
   const handleAdd = useCallback(
     (item: T | null) => {
-      if (!item) {
+      if (isDisabled || !item) {
         return;
       }
       if (isAtMax) {
@@ -844,6 +846,7 @@ export function Tokenizer<T extends SearchableItem>({
     [
       value,
       onChange,
+      isDisabled,
       isAtMax,
       selectedIds,
       selectedLabels,
@@ -854,28 +857,31 @@ export function Tokenizer<T extends SearchableItem>({
   );
 
   // Handle removing an item. Single removal path: both Backspace on an empty
-  // input and the per-token remove buttons route through here, so the
-  // announcement covers both.
+  // input and default/custom token removal route through here, so disabled
+  // attempts cannot change values, announce a removal, or move focus.
   const handleRemove = useCallback(
     (item: T) => {
+      if (isDisabled) {
+        return;
+      }
       const newItems = value.filter(v => v.id !== item.id);
       onChange(newItems, {item, type: 'remove'});
       announce(t('@astryx.tokenizer.tokenRemoved', {label: item.label}));
       inputRef.current?.focus();
     },
-    [value, onChange, announce, t],
+    [value, onChange, isDisabled, announce, t],
   );
 
   // Handle clearing all items
   const handleClearAll = useCallback(() => {
-    if (value.length === 0) {
+    if (isDisabled || value.length === 0) {
       return;
     }
     // Report the last item as removed (convention)
     const lastItem = value[value.length - 1];
     onChange([], {item: lastItem, type: 'remove'});
     inputRef.current?.focus();
-  }, [value, onChange]);
+  }, [value, onChange, isDisabled]);
 
   // Handle backspace on empty input — remove last token
   const handleKeyDown = useCallback(
@@ -1064,17 +1070,11 @@ export function Tokenizer<T extends SearchableItem>({
           />
         </TrailingKeyDownContext>
       </BusyIndicatorLaneProvider>
+      {/* Omit disabled form values without rendering native disabled controls. */}
       {htmlName != null &&
+        !isDisabled &&
         value.map(item => (
-          <input
-            key={item.id}
-            type="hidden"
-            name={htmlName}
-            value={item.id}
-            // Disabled native controls are excluded from form submission;
-            // mirror that for the hidden carriers.
-            disabled={isDisabled}
-          />
+          <input key={item.id} type="hidden" name={htmlName} value={item.id} />
         ))}
       <EndLane
         lane={busyLane}

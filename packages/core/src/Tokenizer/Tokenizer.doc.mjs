@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file Tokenizer.doc.mjs
+ * @input Tokenizer public props and behavior
+ * @output Consumer documentation including disabled commit and form boundaries
+ * @position Same-stem documentation for Tokenizer
+ */
+
 /** @type {import('@astryxdesign/cli/authoring').ComponentDoc} */
 
 export const docs = {
@@ -55,7 +62,7 @@ export const docs = {
       name: 'onChange',
       type: '(items: T[], change: TokenizerChange<T>) => void',
       description:
-        "Called when selection changes. The change argument includes the affected item and type ('add' | 'create' | 'remove' | 'reorder'). Additions and removals (including Backspace on an empty input) are announced to screen readers via a polite live region.",
+        "Called when selection changes. The change argument includes the affected item and type ('add' | 'create' | 'remove' | 'reorder'). Additions and removals (including Backspace on an empty input) are announced to screen readers via a polite live region. Token changes do not call onChange while isDisabled.",
       required: true,
     },
     {
@@ -80,7 +87,7 @@ export const docs = {
       name: 'renderToken',
       type: '(item: T, onRemove: () => void) => ReactNode',
       description:
-        'Custom render function for selected tokens. Default renders Token with label and onRemove.',
+        'Custom render function for selected tokens. Default renders Token with label and onRemove. The supplied onRemove callback does nothing while isDisabled; your custom elements own their disabled presentation.',
     },
     {
       name: 'renderItem',
@@ -98,7 +105,7 @@ export const docs = {
       name: 'htmlName',
       type: 'string',
       description:
-        'The HTML name attribute for form submissions. Renders one hidden input per selected item id.',
+        'The HTML name attribute for form submissions. Renders one hidden input per selected item id while enabled; disabled tokenizers contribute no form entries.',
     },
     {
       name: 'disabledMessage',
@@ -266,12 +273,14 @@ export const docs = {
     {
       name: 'containerClassName',
       type: 'string',
-      description: 'Class name for the field container. Same targeting as `containerXstyle`.',
+      description:
+        'Class name for the field container. Same targeting as `containerXstyle`.',
     },
     {
       name: 'containerStyle',
       type: 'CSSProperties',
-      description: 'Inline styles for the field container. Same targeting as `containerXstyle`.',
+      description:
+        'Inline styles for the field container. Same targeting as `containerXstyle`.',
     },
     {
       name: 'controlXstyle',
@@ -421,7 +430,7 @@ export const docsZh = {
       name: 'onChange',
       type: '(items: T[], change: TokenizerChange<T>) => void',
       description:
-        "\u9009\u62e9\u53d8\u66f4\u65f6\u8c03\u7528\u3002change \u53c2\u6570\u5305\u542b\u53d7\u5f71\u54cd\u7684\u9879\u76ee\u548c\u7c7b\u578b\uff08'add' | 'create' | 'remove' | 'reorder'\uff09\u3002",
+        "选择变更时调用。isDisabled 时不会触发。change 参数包含受影响的项目和类型（'add' | 'create' | 'remove' | 'reorder'）。",
       required: true,
     },
     {
@@ -447,7 +456,7 @@ export const docsZh = {
       name: 'renderToken',
       type: '(item: T, onRemove: () => void) => ReactNode',
       description:
-        '\u5df2\u9009\u6807\u8bb0\u7684\u81ea\u5b9a\u4e49\u6e32\u67d3\u51fd\u6570\u3002\u9ed8\u8ba4\u6e32\u67d3\u5e26\u6709 label \u548c onRemove \u7684 Token\u3002',
+        '已选标记的自定义渲染函数。默认渲染带有 label 和 onRemove 的 Token。isDisabled 时提供的 onRemove 不执行任何操作；自定义元素的禁用呈现由调用方负责。',
     },
     {
       name: 'renderItem',
@@ -466,7 +475,7 @@ export const docsZh = {
       name: 'htmlName',
       type: 'string',
       description:
-        '用于表单提交的 HTML name 属性。为每个已选项目的 id 渲染一个隐藏输入。',
+        '用于表单提交的 HTML name 属性。启用时为每个已选项目的 id 渲染一个隐藏输入；禁用时不提交任何值。',
     },
     {
       name: 'disabledMessage',
@@ -780,10 +789,12 @@ export const docsDense = {
     ],
   },
   propDescriptions: {
-    containerXstyle: 'StyleX styles for the field container; no effect in InputGroup or horizontal-labels FormLayout. No root xstyle/className/style.',
+    containerXstyle:
+      'StyleX styles for the field container; no effect in InputGroup or horizontal-labels FormLayout. No root xstyle/className/style.',
     containerClassName: 'Class name for the field container.',
     containerStyle: 'Inline styles for the field container.',
-    controlXstyle: 'StyleX styles for the visual control box (border, background, icons); not the native input.',
+    controlXstyle:
+      'StyleX styles for the visual control box (border, background, icons); not the native input.',
     controlClassName: 'Class name for the visual control box.',
     controlStyle: 'Inline styles for the visual control box.',
     label: 'Accessible label for input.',
@@ -791,17 +802,18 @@ export const docsDense = {
       'Data source w/ search+bootstrap methods for populating dropdown.',
     value: 'Array of currently selected items.',
     onChange:
-      "Fired on selection change. Change arg includes affected item+type ('add'|'create'|'remove'|'reorder').",
+      "Fired on selection change; blocked while isDisabled. Change arg includes affected item+type ('add'|'create'|'remove'|'reorder').",
     hasCreate:
       'Enable free-text token creation. Shows "Create" dropdown option for unmatched typed text.',
     placeholder: 'Input placeholder. Only shown when no tokens selected.',
     maxEntries: 'Max selections allowed. Input hidden at limit.',
     hasClear: 'Clear-all button for bulk removal.',
     renderToken:
-      'Custom token render. Default renders Token w/ label+onRemove.',
+      'Custom token render. Supplied onRemove is inert while disabled; custom element attributes are caller-owned. Default: Token w/ label+onRemove.',
     renderItem: 'Custom dropdown item render. Default renders TypeaheadItem.',
     isDisabled: 'Disables input+all token interactions.',
-    htmlName: 'HTML name attr; one hidden input per selected item id.',
+    htmlName:
+      'HTML name attr; one hidden input per selected item id while enabled, no entries while disabled.',
     status: 'Validation status w/ type+message for error/warning/success.',
     statusVariant:
       'How status message is placed: attached overlaps below input; detached floats below w/ spacing; tooltip shows on status icon.',

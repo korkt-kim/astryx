@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file Tokenizer.stories.tsx
+ * @input Tokenizer and searchable sample members
+ * @output Interactive examples, including observable disabled removal attempts
+ * @position Storybook examples for Tokenizer consumers
+ */
+
 import {useState} from 'react';
 import type {Meta, StoryObj} from '@storybook/react';
 import {Tokenizer} from '@astryxdesign/core/Tokenizer';
@@ -430,18 +437,17 @@ export const CreatableWithSearch: Story = {
 
 // Disabled with an explanation tooltip. Hover or keyboard-focus the input to see
 // why it's disabled — the reason is announced to assistive tech via
-// aria-describedby, and the input stays focusable (input is still blocked). Use
-// disabledMessage instead of wrapping a disabled Tokenizer in Tooltip: disabled
-// controls swallow the pointer events a Tooltip wrapper needs.
+// aria-describedby. Backspace on the empty input must leave the controlled
+// selection unchanged; toggling isDisabled off restores normal token removal.
 export const DisabledWithMessage: Story = {
   render: args => {
-    const [value] = useState([users[0], users[1]]);
+    const [value, setValue] = useState([users[0], users[1]]);
     return (
       <Tokenizer
         {...args}
         searchSource={userSource}
         value={value}
-        onChange={() => {}}
+        onChange={items => setValue(items)}
       />
     );
   },
@@ -449,6 +455,8 @@ export const DisabledWithMessage: Story = {
     label: 'Team Members',
     isDisabled: true,
     disabledMessage: 'You need edit access to change members',
+    description:
+      'Try Backspace on the empty input: selected members stay unchanged.',
   },
 };
 

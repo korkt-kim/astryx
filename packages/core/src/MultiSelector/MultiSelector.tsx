@@ -6,7 +6,8 @@
  * @file MultiSelector.tsx
  * @input Uses React, StyleX, usePopover, useTooltip, CheckboxInput, Field, Badge, Icon, InputGroupContext
  * @output Exports MultiSelector with input, secondary, and ghost trigger variants;
- *   disabled value commits are blocked even while the panel remains open
+ *   disabled panels preserve their focused search, clear, and collection owners
+ *   while blocking query edits and value commits and exposing their reason
  * @position Core implementation; consumed by index.ts
  *
  * SYNC: When modified, update:
@@ -46,6 +47,7 @@ import {InternalInputClearButton} from '../Field/InputClearButton';
 import {Divider} from '../Divider';
 import {Spinner} from '../Spinner';
 import {PanelSearchInput} from '../Field/PanelSearchInput';
+import {SheetDescription} from '../Field/SheetDescription';
 import {CheckboxInput} from '../CheckboxInput';
 import type {IndicatorPosition} from '../Indicator';
 import {Badge} from '../Badge';
@@ -1181,6 +1183,8 @@ export function MultiSelector<T extends MultiSelectorOptionType>({
   const statusMessageId = useId();
   const inputLabelId = useId();
   const readOnlyDescriptionId = useId();
+  const popupDisabledMessageId = useId();
+  const sheetDescriptionId = useId();
   const searchId = useId();
   // Read by the live region above so it speaks what this element renders.
   const emptyStateRef = useRef<HTMLDivElement>(null);
@@ -1235,7 +1239,6 @@ export function MultiSelector<T extends MultiSelectorOptionType>({
       effectiveStatusVariant === 'tooltip' && status?.message
         ? statusTooltip.describedBy
         : null,
-      showsDisabledMessage ? disabledMessageTooltip.describedBy : null,
       isEffectivelyReadOnly ? readOnlyDescriptionId : null,
     ],
     inputGroup,
@@ -1449,6 +1452,21 @@ export function MultiSelector<T extends MultiSelectorOptionType>({
     },
   });
   const {popover} = surface;
+  // Anchor-only mode renders no Field or status chrome. Keep caller IDs, but
+  // do not refer to local descriptions that are absent in that composition.
+  const fieldDescribedBy =
+    [ariaDescribedByProp, !hasExternalTrigger && ariaDescribedBy]
+      .filter(Boolean)
+      .join(' ') || undefined;
+  const popupDescribedBy =
+    [
+      surface.activePresentation === 'bottom-sheet' && fieldDescribedBy
+        ? sheetDescriptionId
+        : fieldDescribedBy,
+      showsDisabledMessage && popupDisabledMessageId,
+    ]
+      .filter(Boolean)
+      .join(' ') || undefined;
   const hideSurface = surface.hide;
   const isSurfaceOpen = surface.isOpen;
 
@@ -1536,6 +1554,9 @@ export function MultiSelector<T extends MultiSelectorOptionType>({
   // with the selection-count announcements above.
   const handleSearchChange = useCallback(
     (nextQuery: string) => {
+      if (isDisabled || isEffectivelyReadOnly) {
+        return;
+      }
       setSearchQuery(nextQuery);
       if (nextQuery.length === 0) {
         // Emptying the query clears the region rather than announcing a count.
@@ -1569,7 +1590,15 @@ export function MultiSelector<T extends MultiSelectorOptionType>({
       }
       announce(t('@astryx.multiSelector.resultCount', {count}));
     },
-    [announce, isLoading, selectableItems, getCreateQuery, t],
+    [
+      isDisabled,
+      isEffectivelyReadOnly,
+      announce,
+      isLoading,
+      selectableItems,
+      getCreateQuery,
+      t,
+    ],
   );
 
   // The panel's empty message is role="presentation" — role="listbox" permits
@@ -1968,6 +1997,8 @@ export function MultiSelector<T extends MultiSelectorOptionType>({
         aria-autocomplete="list"
         aria-activedescendant={activeDescendantId}
         value={searchQuery}
+        isDisabled={isDisabled}
+        aria-describedby={popupDescribedBy}
         onValueChange={handleSearchChange}
         onContainerKeyDown={e => {
           // The clear (✕) button lives inside the row, after the input in DOM
@@ -2046,6 +2077,8 @@ export function MultiSelector<T extends MultiSelectorOptionType>({
     searchQuery,
     hasQuery,
     searchPlaceholder,
+    isDisabled,
+    popupDescribedBy,
     handleSearchChange,
     onKeyDown,
     surface.isOpen,
@@ -2174,6 +2207,14 @@ export function MultiSelector<T extends MultiSelectorOptionType>({
                 role="gridcell"
                 id={getActionCellId(flatIndex)}
                 data-multi-selector-action-cell=""
+                // The collection's disabled state belongs to selection, not
+                // the caller's independent action. Stop inherited ARIA state
+                // at our cell; the caller's own attributes still win inside it.
+                aria-disabled={
+                  isDisabled && !hasSearch && item.action != null
+                    ? false
+                    : undefined
+                }
                 onMouseEnter={
                   item.action != null
                     ? () => onItemMouseEnter(item, flatIndex, 'action')
@@ -2197,6 +2238,8 @@ export function MultiSelector<T extends MultiSelectorOptionType>({
     },
     [
       isGrid,
+      isDisabled,
+      hasSearch,
       highlightedCell,
       isKeyboardHighlight,
       getActionCellId,
@@ -2413,12 +2456,31 @@ export function MultiSelector<T extends MultiSelectorOptionType>({
           ? {'aria-label': label}
           : listboxLabelProps)}
         aria-activedescendant={activeDescendantId}
+        aria-disabled={isDisabled || undefined}
+        aria-describedby={popupDescribedBy}
         tabIndex={listboxOwnsKeyboard ? 0 : undefined}
         onKeyDown={listboxOwnsKeyboard ? onKeyDown : undefined}
         {...stylex.props(styles.listbox)}>
         {renderOptions()}
       </div>
     </div>
+  );
+
+  const describedPanelContent = (
+    <>
+      {panelContent}
+      {surface.activePresentation === 'bottom-sheet' && fieldDescribedBy && (
+        <SheetDescription
+          id={sheetDescriptionId}
+          describedBy={fieldDescribedBy}
+        />
+      )}
+      {showsDisabledMessage && (
+        <VisuallyHidden id={popupDisabledMessageId}>
+          {disabledMessage}
+        </VisuallyHidden>
+      )}
+    </>
   );
 
   let selectionSurface: ReactNode = null;
@@ -2431,12 +2493,12 @@ export function MultiSelector<T extends MultiSelectorOptionType>({
           finalFocusRef={triggerRef}
           initialFocusRef={hasSearch ? searchRef : listboxRef}
           label={label}>
-          {panelContent}
+          {describedPanelContent}
         </SelectorBottomSheet>
       );
     }
   } else if (!isEffectivelyReadOnly) {
-    selectionSurface = popover.render(panelContent, {
+    selectionSurface = popover.render(describedPanelContent, {
       placement: 'below',
       alignment: 'start',
       offset: spacingVars['--spacing-1'],
@@ -2459,8 +2521,13 @@ export function MultiSelector<T extends MultiSelectorOptionType>({
     id: triggerId,
     // A caller's description is kept alongside the field's own.
     'aria-describedby':
-      [ariaDescribedByProp, ariaDescribedBy].filter(Boolean).join(' ') ||
-      undefined,
+      [
+        ariaDescribedByProp,
+        ariaDescribedBy,
+        showsDisabledMessage ? disabledMessageTooltip.describedBy : null,
+      ]
+        .filter(Boolean)
+        .join(' ') || undefined,
     'aria-labelledby': ariaLabelledBy,
     'aria-required': isEffectivelyRequired ? 'true' : undefined,
     'aria-invalid': status?.type === 'error' ? 'true' : undefined,

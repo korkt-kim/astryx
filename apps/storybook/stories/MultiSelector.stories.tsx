@@ -3,7 +3,7 @@
 /**
  * @file MultiSelector.stories.tsx
  * @input Uses Storybook and the public MultiSelector API
- * @output Interactive examples, including disabling an already-open selector
+ * @output Interactive examples, including a disabled open search panel with preserved query and value
  * @position Core component stories and browser interaction examples
  */
 
@@ -360,7 +360,7 @@ export const DisabledWithMessage: Story = {
 };
 
 // The parent changes policy after opening, without removing the panel or its
-// focus owner. The existing options cannot commit until selection is enabled.
+// focus owner. Search and selection are inert while the reason stays available.
 export const DisabledWhileOpen: Story = {
   render: () => {
     const [value, setValue] = useState<string[]>(['Apple']);
@@ -373,12 +373,14 @@ export const DisabledWhileOpen: Story = {
           value={value}
           onChange={setValue}
           isDisabled={isDisabled}
+          disabledMessage="Fruit selection is temporarily unavailable"
+          hasSearch
           onOpenChange={isOpen => {
             if (isOpen) {
               setIsDisabled(true);
             }
           }}
-          description="Opening the panel disables selection; the current value stays unchanged."
+          description="Opening the panel disables search and selection without removing the panel."
         />
         <output data-testid="selected-fruit">{value.join(', ')}</output>
       </>
@@ -387,9 +389,16 @@ export const DisabledWhileOpen: Story = {
   play: async ({canvasElement}) => {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
-    const trigger = canvas.getByRole('combobox', {name: 'Fruit'});
+    const trigger = canvas.getByRole('button', {name: 'Fruit'});
     await userEvent.click(trigger);
     await expect(trigger).toHaveAttribute('aria-disabled', 'true');
+    const search = await page.findByRole('combobox', {name: 'Search options'});
+    await expect(search).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.type(search, 'Ban');
+    await expect(search).toHaveValue('');
+    await expect(search).toHaveAccessibleDescription(
+      /Fruit selection is temporarily unavailable/,
+    );
     await userEvent.click(await page.findByRole('option', {name: 'Banana'}));
     await expect(canvas.getByTestId('selected-fruit')).toHaveTextContent(
       /^Apple$/,

@@ -3,7 +3,7 @@
 /**
  * @file MultiSelector.doc.mjs
  * @input Describes the public MultiSelector props and anatomy
- * @output Consumer documentation, including disabled selection boundaries
+ * @output Consumer documentation, including disabled selection, search, and popup focus boundaries
  * @position Component documentation consumed by the CLI and docsite
  */
 
@@ -293,7 +293,7 @@ export const docs = {
           name: 'isDisabled',
           type: 'boolean',
           description:
-            'Disables selection while keeping the trigger focusable. An already-open panel cannot change values through options, select-all, or creation; neither onChange nor changeAction runs. Caller-rendered action controls keep their own disabled state.',
+            'Disables selection while keeping the trigger focusable. An already-open panel retains its focused search input, search clear button, or collection with disabled state and descriptions; typing, paste, and search clear cannot change the query. Options, select-all, and creation cannot change values or run onChange or changeAction. Caller-rendered action controls keep their own disabled state.',
         },
         {
           name: 'isReadOnly',
@@ -312,7 +312,7 @@ export const docs = {
           name: 'disabledMessage',
           type: 'string',
           description:
-            'Explains why the selector is disabled. With isDisabled, shows the reason as a tooltip on hover and keyboard focus of the trigger, which stays focusable (aria-disabled) like every disabled selector; activation stays blocked. Use this instead of wrapping a disabled MultiSelector in Tooltip.',
+            'Explains why the selector is disabled. With isDisabled, shows the reason as a tooltip on hover and keyboard focus of the trigger, which stays focusable (aria-disabled). An already-open panel also exposes the reason on its search input, search clear button, or collection focus owner, alongside existing descriptions. Activation stays blocked. Use this instead of wrapping a disabled MultiSelector in Tooltip.',
         },
         {
           name: 'isLabelHidden',
@@ -555,13 +555,13 @@ export const docsZh = {
         hasCreate:
           '配合 hasSearch：当输入的文本与任何选项标签都不匹配时，在列表首行提供“创建 "<query>"”行；选中后通过 onChange 以 {type: "create", query} 描述符报告，调用方需在同一次更新中添加该选项。',
         isDisabled:
-          '禁用选择但保留触发器焦点；已打开面板的选项、全选和创建操作不会调用 onChange 或 changeAction。调用方渲染的操作控件自行管理禁用状态。',
+          '禁用选择但保留触发器焦点；已打开面板的搜索输入、搜索清除按钮和集合焦点保持不变，并提供禁用状态及说明。输入、粘贴和清除不会更改搜索内容；选项、全选和创建操作不会调用 onChange 或 changeAction。调用方渲染的操作控件自行管理禁用状态。',
         isReadOnly:
           '将选择器设为只读：保留当前值、焦点顺序和表单提交，但移除选择面板、清除操作和展开指示器。与 isDisabled 不同，只读控件不会变暗；两者同时设置时 isDisabled 优先。',
         htmlName:
           '用于表单提交的 HTML name 属性。为每个已选值渲染一个隐藏输入，类似原生多选。',
         disabledMessage:
-          '解释选择器被禁用的原因。与 isDisabled 一起使用时，悬停/键盘聚焦时显示工具提示，触发器与所有被禁用的选择器一样通过 aria-disabled 保持可聚焦（仍无法激活）。请使用此属性，而不是用 Tooltip 包裹被禁用的选择器。',
+          '解释选择器被禁用的原因。与 isDisabled 一起使用时，悬停/键盘聚焦触发器时显示工具提示，触发器通过 aria-disabled 保持可聚焦。已打开面板的搜索输入、搜索清除按钮或集合焦点也会提供禁用原因及已有说明，操作仍被阻止。请使用此属性，而不是用 Tooltip 包裹被禁用的选择器。',
         isLabelHidden: '视觉上隐藏标签同时保持其可访问性。',
         description: '标签下方显示的辅助文本。',
         isOptional: '将字段标记为可选。',
@@ -716,12 +716,12 @@ export const docsDense = {
         hasCreate:
           'with hasSearch: first row is Create "<query>" when no option label matches; reported through onChange with a {type: "create", query} descriptor; caller adds the option',
         isDisabled:
-          'blocks selection + creation callbacks/Actions even in an open panel; trigger stays focusable; caller actions own their disabled state',
+          'blocks selection/creation callbacks/Actions + search typing/paste/clear; retained popup owners keep focus, disabled state + descriptions; caller actions own their disabled state',
         isReadOnly:
           'read-only: preserves values, focus + form submission; removes menu, clear + disclosure',
         htmlName: 'HTML name attr; one hidden input per selected value.',
         disabledMessage:
-          'why disabled; w/ isDisabled shows tooltip on hover/focus, trigger stays focusable via aria-disabled; use instead of Tooltip wrapper',
+          'why disabled; tooltip on trigger hover/focus + reason on retained popup input/clear/collection; keeps existing descriptions; use instead of Tooltip wrapper',
         isLabelHidden: 'visually hides label',
         description: 'helper text below label',
         isOptional: 'marks optional',

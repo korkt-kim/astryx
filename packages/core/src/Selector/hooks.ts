@@ -7,7 +7,8 @@
  * @input Uses untransformed DOM layout geometry from the Selector's outer
  *   anchor, listbox, and selected option
  * @output Hooks for Selector: useSelectedItemOffset, and useCombobox (public,
- *   exported from the Selector entry point; also used by CommandPalette)
+ *   exported from the Selector entry point; also used by CommandPalette), with
+ *   control- and option-level disabled selection guards
  * @position Selector hooks; used by Selector.tsx and CommandPalette
  *
  * SYNC: When useCombobox's options or return change, update:
@@ -239,13 +240,13 @@ export function useCombobox({
 
   const selectItem = useCallback(
     (item: SelectorOptionData) => {
-      if (item.disabled) {
+      if (isDisabled || item.disabled) {
         return;
       }
       onSelect?.(item.value);
       closeAndReset();
     },
-    [onSelect, closeAndReset],
+    [isDisabled, onSelect, closeAndReset],
   );
 
   const onTriggerClick = useCallback(() => {

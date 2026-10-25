@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file useCombobox.doc.mjs
+ * @input useCombobox configuration and handlers
+ * @output Consumer guidance for combobox navigation and disabled selection
+ * @position Selector hook reference
+ */
+
 /** @type {import('@astryxdesign/cli/authoring').HookDoc} */
 export const docs = {
   name: 'useCombobox',
@@ -95,7 +102,8 @@ export const docs = {
     {
       name: 'options.isDisabled',
       type: 'boolean',
-      description: 'Whether the control ignores clicks and keys.',
+      description:
+        'Whether the control ignores clicks, keys, and option selection, including selection from an already-open list.',
       default: 'false',
     },
   ],
@@ -132,7 +140,8 @@ export const docs = {
     {
       name: 'onItemSelect',
       type: '(item: SelectorOptionData) => void',
-      description: 'Picks an option from a press on it, then closes the list.',
+      description:
+        'Picks an option from a press on it, then closes the list. Does nothing when the control or option is disabled.',
     },
     {
       name: 'onItemMouseEnter',
@@ -196,7 +205,8 @@ export const docsDense = {
       'list has own search field: Space types, press / Enter opening does not pre-highlight (ArrowDown/Up still first / last), printable keys on closed control -> onSearchSeed.',
     'options.onSearchSeed':
       'w/ hasSearch, each printable char except Space typed while control focused (opens first if closed).',
-    'options.isDisabled': 'ignore clicks + keys.',
+    'options.isDisabled':
+      'ignore clicks, keys + option selection, even in an already-open list.',
   },
   returnDescriptions: {
     highlightedIndex:
@@ -207,7 +217,8 @@ export const docsDense = {
     onTriggerClick: 'toggle list from a press on control.',
     onKeyDown:
       'control keydown: ArrowDown/Up open or move; Enter (Space w/o search) picks or opens; Escape / Tab close; Home / End / PageUp / PageDown jump. editable control keeping Home / End for caret: do not pass them.',
-    onItemSelect: 'pick from a press, then close.',
+    onItemSelect:
+      'pick from a press, then close; no-op if control or option is disabled.',
     onItemMouseEnter: 'hover makes option active; no scroll, no focus move.',
   },
   usage: {

@@ -5,7 +5,7 @@
 /**
  * @file NavHeadingMenuItem.tsx
  * @input Uses React, StyleX, Icon, Text, NavMenuContext, and the disabled-link boundary
- * @output NavHeadingMenuItem and props; disabled rows keep focus and block navigation
+ * @output NavHeadingMenuItem and props; disabled rows retain focus and suppress activation
  * @position Core implementation; consumed by index.ts
  *
  * SYNC: When modified, update:
@@ -110,7 +110,7 @@ export interface NavHeadingMenuItemProps extends Omit<
  * Reads size from the parent NavHeadingMenu for consistent padding.
  * Automatically dismisses the menu on click via context.
  * Renders as a link when `href` is provided. Disabled items keep their focus
- * owner and tabIndex=-1 while withholding navigation and selection.
+ * owner and tabIndex=-1 while withholding navigation and activation callbacks.
  *
  * @example
  * ```
@@ -158,6 +158,14 @@ export function NavHeadingMenuItem({
       aria-disabled={isDisabled || undefined}
       href={href}
       onClick={handleClick}
+      // Suppress row activation callbacks, not observation or child-owned events.
+      onClickCapture={isDisabled ? undefined : restProps.onClickCapture}
+      onAuxClick={isDisabled ? undefined : restProps.onAuxClick}
+      onAuxClickCapture={isDisabled ? undefined : restProps.onAuxClickCapture}
+      onDoubleClick={isDisabled ? undefined : restProps.onDoubleClick}
+      onDoubleClickCapture={
+        isDisabled ? undefined : restProps.onDoubleClickCapture
+      }
       data-testid={testId}
       {...mergeProps(
         themeProps('nav-heading-menu-item', {size}),

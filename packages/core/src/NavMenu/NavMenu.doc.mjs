@@ -3,7 +3,7 @@
 /**
  * @file NavMenu.doc.mjs
  * @input Public NavHeadingMenu composition and item interaction behavior
- * @output Consumer guidance for nav-heading menus and inert disabled items
+ * @output Consumer guidance for disabled navigation, action callbacks, and focus
  * @position Shipped NavHeadingMenu documentation
  */
 
@@ -59,7 +59,8 @@ export const docs = {
       'NavHeadingMenu provides role="menu" with keyboard navigation; ' +
       'NavHeadingMenuItem renders individual selectable items. ' +
       'Pass as the menu prop of SideNavHeading or TopNavHeading. ' +
-      'Disabled items keep their focus owner and tabIndex=-1 without navigating or selecting. ' +
+      'Disabled items keep their focus owner and tabIndex=-1 without navigating or invoking selection, click-capture, auxiliary-click, or double-click callbacks on the item. ' +
+      'On action rows, focus and hover observation events remain available, and caller-rendered label content keeps its own event behavior. ' +
       'Arrow navigation and typeahead continue to skip disabled items. ' +
       'Use aria-describedby on NavHeadingMenuItem to connect an explanation.',
   },
@@ -92,7 +93,7 @@ export const docsDense = {
   usage: {
     anatomy,
     description:
-      'Accessible menu container + items for nav heading popovers. NavHeadingMenu provides role="menu" w/ keyboard navigation; NavHeadingMenuItem renders individual selectable items. Pass as menu prop of SideNavHeading or TopNavHeading. Disabled items retain focus + tabIndex=-1, block navigation/selection, and stay skipped by arrows/typeahead. Connect explanations via item aria-describedby.',
+      'Accessible menu container + items for nav heading popovers. NavHeadingMenu provides role="menu" w/ keyboard navigation; NavHeadingMenuItem renders individual selectable items. Pass as menu prop of SideNavHeading or TopNavHeading. Disabled items retain focus + tabIndex=-1, block navigation and item selection/click-capture/auxiliary-click/double-click callbacks, and stay skipped by arrows/typeahead. Action rows preserve focus/hover observation and caller-rendered label events. Connect explanations via item aria-describedby.',
   },
   propDescriptions: {
     size: 'controls min-width + item padding',

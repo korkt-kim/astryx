@@ -3,7 +3,7 @@
 /**
  * @file NavHeadingMenuItem.test.tsx
  * @input Public NavMenu exports and browser-like user interaction
- * @output Regression coverage for disabled menu-item navigation and focus
+ * @output Regression coverage for disabled navigation, action callbacks, and focus
  * @position Component-local tests for NavHeadingMenuItem
  */
 
@@ -228,32 +228,210 @@ describe('NavHeadingMenuItem disabled navigation', () => {
     expect(onClick).toHaveBeenCalledOnce();
   });
 
-  it('preserves a focused action item without adding a Tab stop or selecting it', async () => {
+  it('guards action callbacks at the current disabled state without replacing the focused owner', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
+    const onClickCapture = vi.fn();
+    const onAuxClick = vi.fn();
+    const onAuxClickCapture = vi.fn();
+    const onDoubleClick = vi.fn();
+    const onDoubleClickCapture = vi.fn();
+    const closeMenu = vi.fn();
+    const ref = createRef<HTMLElement>();
     const fixture = (isDisabled: boolean) => (
-      <NavHeadingMenu>
-        <NavHeadingMenuItem
-          label="Action"
-          isDisabled={isDisabled}
-          onClick={onClick}
-        />
-      </NavHeadingMenu>
+      <NavHeadingCloseContext value={{closeMenu}}>
+        <NavHeadingMenu>
+          <NavHeadingMenuItem
+            ref={ref}
+            label="Action"
+            isDisabled={isDisabled}
+            onClick={onClick}
+            onClickCapture={onClickCapture}
+            onAuxClick={onAuxClick}
+            onAuxClickCapture={onAuxClickCapture}
+            onDoubleClick={onDoubleClick}
+            onDoubleClickCapture={onDoubleClickCapture}
+          />
+        </NavHeadingMenu>
+      </NavHeadingCloseContext>
     );
-    const {rerender} = render(fixture(false));
+    const {rerender, unmount} = render(fixture(false));
     const item = screen.getByRole('menuitem');
     item.focus();
     rerender(fixture(true));
     expect(screen.getByRole('menuitem')).toBe(item);
+    expect(ref.current).toBe(item);
     expect(item).toHaveFocus();
     expect(item).toHaveAttribute('tabindex', '-1');
+    expect(item).toHaveAttribute('aria-disabled', 'true');
     expect(item).not.toHaveAttribute('_isDisabled');
     await user.keyboard('{Enter}{ }');
     await user.click(item);
-    expect(onClick).not.toHaveBeenCalled();
+    await user.pointer({target: item, keys: '[MouseMiddle]'});
+    await user.dblClick(item);
+    for (const handler of [
+      onClick,
+      onClickCapture,
+      onAuxClick,
+      onAuxClickCapture,
+      onDoubleClick,
+      onDoubleClickCapture,
+      closeMenu,
+    ]) {
+      expect(handler).not.toHaveBeenCalled();
+    }
+    expect(item).toHaveFocus();
     rerender(fixture(false));
+    expect(ref.current).toBe(item);
+    expect(item).toHaveFocus();
+    await user.keyboard('{Enter}{ }');
+    await user.click(item);
+    await user.pointer({target: item, keys: '[MouseMiddle]'});
+    await user.dblClick(item);
+    expect(onClick).toHaveBeenCalledTimes(5);
+    expect(onClickCapture).toHaveBeenCalledTimes(5);
+    expect(closeMenu).toHaveBeenCalledTimes(5);
+    expect(onAuxClick).toHaveBeenCalledOnce();
+    expect(onAuxClickCapture).toHaveBeenCalledOnce();
+    expect(onDoubleClick).toHaveBeenCalledOnce();
+    expect(onDoubleClickCapture).toHaveBeenCalledOnce();
+    unmount();
+    expect(ref.current).toBeNull();
+  });
+
+  it('preserves observation events and caller-rendered child activation on a disabled action', async () => {
+    const user = userEvent.setup();
+    const onFocus = vi.fn();
+    const onBlur = vi.fn();
+    const onPointerEnter = vi.fn();
+    const onPointerLeave = vi.fn();
+    const onKeyDown = vi.fn();
+    const onClick = vi.fn();
+    const onClickCapture = vi.fn();
+    const childClick = vi.fn();
+    const childAuxClick = vi.fn();
+    const ancestorClick = vi.fn();
+    render(
+      <div onClick={ancestorClick}>
+        <NavHeadingMenu>
+          <NavHeadingMenuItem label="First" />
+          <NavHeadingMenuItem
+            isDisabled
+            label={
+              <a
+                href="#child-destination"
+                onClick={childClick}
+                onAuxClick={childAuxClick}>
+                Child destination
+              </a>
+            }
+            onClick={onClick}
+            onClickCapture={onClickCapture}
+            onFocus={onFocus}
+            onBlur={onBlur}
+            onPointerEnter={onPointerEnter}
+            onPointerLeave={onPointerLeave}
+            onKeyDown={onKeyDown}
+          />
+          <NavHeadingMenuItem label="Last" />
+        </NavHeadingMenu>
+      </div>,
+    );
+    const item = screen.getByRole('menuitem', {name: 'Child destination'});
     item.focus();
-    await user.keyboard('{ }');
+    await user.hover(item);
+    await user.unhover(item);
+    await user.keyboard('{ArrowDown}');
+    expect(onFocus).toHaveBeenCalledOnce();
+    expect(onBlur).toHaveBeenCalledOnce();
+    expect(onPointerEnter).toHaveBeenCalledOnce();
+    expect(onPointerLeave).toHaveBeenCalledOnce();
+    expect(onKeyDown).toHaveBeenCalledOnce();
+    expect(screen.getByRole('menuitem', {name: 'First'})).toHaveFocus();
+    await user.keyboard('{ArrowDown}');
+    expect(screen.getByRole('menuitem', {name: 'Last'})).toHaveFocus();
+    await user.keyboard('f');
+    expect(screen.getByRole('menuitem', {name: 'First'})).toHaveFocus();
+
+    const child = screen.getByRole('link', {name: 'Child destination'});
+    expect(child).toHaveAttribute('href', '#child-destination');
+    expect(fireEvent.click(child)).toBe(true);
+    expect(
+      fireEvent(
+        child,
+        new MouseEvent('auxclick', {
+          button: 1,
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    ).toBe(true);
+    expect(childClick).toHaveBeenCalledOnce();
+    expect(childAuxClick).toHaveBeenCalledOnce();
+    expect(ancestorClick).toHaveBeenCalledOnce();
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onClickCapture).not.toHaveBeenCalled();
+  });
+
+  it('preserves enabled capture composition and consumer cancellation', () => {
+    const onClick = vi.fn();
+    const closeMenu = vi.fn();
+    const ancestorAuxClick = vi.fn();
+    const events: string[] = [];
+    const fixture = (cancel: boolean) => (
+      <div onAuxClick={ancestorAuxClick}>
+        <NavHeadingCloseContext value={{closeMenu}}>
+          <NavHeadingMenu>
+            <NavHeadingMenuItem
+              label="Action"
+              onClick={onClick}
+              onClickCapture={event => {
+                events.push('capture');
+                if (cancel) {
+                  event.stopPropagation();
+                }
+              }}
+              onAuxClickCapture={event => {
+                events.push(
+                  `aux-capture:${event.currentTarget.getAttribute('role')}`,
+                );
+                event.preventDefault();
+              }}
+              onAuxClick={event => {
+                events.push(`aux:${event.defaultPrevented}`);
+                event.stopPropagation();
+              }}
+            />
+          </NavHeadingMenu>
+        </NavHeadingCloseContext>
+      </div>
+    );
+    const {rerender} = render(fixture(true));
+    const item = screen.getByRole('menuitem');
+    fireEvent.click(item);
+    expect(events).toEqual(['capture']);
+    expect(onClick).not.toHaveBeenCalled();
+    expect(closeMenu).not.toHaveBeenCalled();
+    rerender(fixture(false));
+    fireEvent.click(item);
     expect(onClick).toHaveBeenCalledOnce();
+    expect(closeMenu).toHaveBeenCalledOnce();
+    expect(
+      fireEvent(
+        item,
+        new MouseEvent('auxclick', {
+          button: 1,
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    ).toBe(false);
+    expect(events).toEqual([
+      'capture',
+      'capture',
+      'aux-capture:menuitem',
+      'aux:true',
+    ]);
+    expect(ancestorAuxClick).not.toHaveBeenCalled();
   });
 });

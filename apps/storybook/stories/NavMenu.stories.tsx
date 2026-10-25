@@ -2,12 +2,13 @@
 
 /**
  * @file NavMenu.stories.tsx
- * @input Nav-heading menu sizes, content, and disabled destinations
- * @output Menu examples, including disabled links in a heading popover
+ * @input Nav-heading menu sizes, content, disabled destinations, and action callbacks
+ * @output Menu examples, including disabled link and action rows in a heading popover
  * @position Storybook examples for NavHeadingMenu and NavHeadingMenuItem
  */
 
 import type {Meta, StoryObj} from '@storybook/react';
+import {fn} from 'storybook/test';
 import {NavHeadingMenu, NavHeadingMenuItem} from '@astryxdesign/core/NavMenu';
 import {TopNavHeading} from '@astryxdesign/core/TopNav';
 import {Text} from '@astryxdesign/core/Text';
@@ -124,7 +125,7 @@ export const DisabledItems: Story = {
     docs: {
       description: {
         story:
-          'Open the heading menu to try disabled link and action items. They do not navigate or select, keep tabIndex=-1, and remain skipped by arrow navigation.',
+          'Open the heading menu to try disabled link and action items. Admin does not invoke selection, click-capture, or auxiliary-click callbacks. Disabled rows keep tabIndex=-1 and remain skipped by arrow navigation.',
       },
     },
   },
@@ -148,7 +149,13 @@ export const DisabledItems: Story = {
           isDisabled
         />
         <NavHeadingMenuItem label="Settings" href="#" />
-        <NavHeadingMenuItem label="Admin" isDisabled />
+        <NavHeadingMenuItem
+          label="Admin"
+          isDisabled
+          onClick={fn()}
+          onClickCapture={fn()}
+          onAuxClick={fn()}
+        />
       </>
     ),
   },

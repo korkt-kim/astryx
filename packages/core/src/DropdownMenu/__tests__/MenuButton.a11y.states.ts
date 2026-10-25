@@ -3,7 +3,7 @@
 /**
  * @file MenuButton.a11y.states.ts
  * @input The anchored DropdownMenu and MoreMenu triggers' representative states and the facts MENU_BUTTON_PATTERN reads
- * @output MENU_BUTTON_BINDING_STATES and the explicit ownership exclusions for this binding
+ * @output MENU_BUTTON_BINDING_STATES with focusable disabled triggers and explicit exclusions
  * @position Binding inventory shared by the jsdom test and the Chromium spec (component:DropdownMenu AR4, component:MoreMenu AR1)
  */
 
@@ -91,7 +91,7 @@ export const MENU_BUTTON_BINDING_STATES = [
     label: 'Actions',
     firstItem: 'Rename',
     lastItem: 'Delete',
-    facts: facts({operable: false, focusable: false}),
+    facts: facts({operable: false, focusable: true}),
     disabled: true,
   },
   {

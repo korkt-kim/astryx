@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file useListFocus.doc.mjs
+ * @input Linear navigation and opt-in roving tabindex behavior
+ * @output Consumer guidance including the all-disabled focusable entry
+ * @position Shipped focus-hook documentation
+ */
+
 /** @type {import('@astryxdesign/cli/authoring').HookDoc} */
 export const docs = {
   name: 'useListFocus',
@@ -80,7 +87,7 @@ export const docs = {
       name: 'options.hasRovingTabIndex',
       type: 'boolean',
       description:
-        'Opt into roving-tabindex ownership: the hook stamps a single tab stop (one item tabindex="0", the rest -1), repairs it as items mount/unmount or toggle disabled, and moves it with arrow navigation. When false, the hook only moves focus and never touches tabindex.',
+        'Opt into roving-tabindex ownership: the hook stamps a single tab stop (one item tabindex="0", the rest -1), repairs it as items mount/unmount or toggle disabled, and moves it with arrow navigation. When all items are disabled, one focusable aria-disabled item remains the entry; arrows still skip disabled items. Native-disabled, hidden, inert, and nonfocusable items never become that entry. When false, the hook only moves focus and never touches tabindex.',
       default: 'false',
       required: false,
     },
@@ -190,7 +197,7 @@ export const docsDense = {
     'options.hasPaging':
       'whether PageDown/PageUp page through a scrolling list (last/first fully visible item, then one viewport further; never wraps).',
     'options.hasRovingTabIndex':
-      'opt into roving-tabindex ownership: hook stamps + repairs a single tab stop across items.',
+      'opt into roving-tabindex ownership: hook stamps + repairs a single tab stop; all-disabled lists retain one focusable aria-disabled entry without changing arrow skipping.',
     'options.hasCaretGuard':
       "when true, don't steal arrow keys from a nested text input/textarea mid-line or from a contenteditable.",
   },

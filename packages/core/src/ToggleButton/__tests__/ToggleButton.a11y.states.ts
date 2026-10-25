@@ -3,7 +3,7 @@
 /**
  * @file ToggleButton.a11y.states.ts
  * @input Uses ToggleButtonStateFacts from @astryxdesign/a11y-spec
- * @output The finite ToggleButton state inventory shared by jsdom and Chromium
+ * @output ToggleButton's state inventory, including focusable disabled states
  * @position Records every state that can change the toggle-button contract.
  */
 
@@ -73,11 +73,11 @@ export const TOGGLE_BUTTON_BINDING_STATES = [
   },
   {
     id: 'disabled-unpressed',
-    summary: 'a natively disabled standalone toggle',
+    summary: 'a focusable disabled standalone toggle',
     storyId: 'a11y-toggle-button-pattern--disabled-unpressed',
     visibleLabel: 'Bold',
     renderKind: 'standalone',
-    facts: facts(false, {operable: false, focusable: false, unavailable: true}),
+    facts: facts(false, {operable: false, unavailable: true}),
   },
   {
     id: 'disabled-with-tooltip-pressed',
@@ -112,7 +112,7 @@ export const TOGGLE_BUTTON_BINDING_STATES = [
     visibleLabel: 'List',
     renderKind: 'single-group',
     memberDisabled: true,
-    facts: facts(false, {operable: false, focusable: false, unavailable: true}),
+    facts: facts(false, {operable: false, unavailable: true}),
   },
   {
     id: 'single-group-disabled-member-silent',
@@ -121,7 +121,7 @@ export const TOGGLE_BUTTON_BINDING_STATES = [
     visibleLabel: 'List',
     renderKind: 'single-group',
     groupDisabled: true,
-    facts: facts(false, {operable: false, focusable: false, unavailable: true}),
+    facts: facts(false, {operable: false, unavailable: true}),
   },
   {
     id: 'multiple-group-unpressed',

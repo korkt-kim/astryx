@@ -5,7 +5,7 @@
  * @input Uses vitest, @testing-library/react, @babel/core + @stylexjs/babel-plugin,
  *   ButtonGroup and Button components
  * @output Unit tests for ButtonGroup, incl. the compiled-CSS contract for the
- *   trailing radius (#2508)
+ *   trailing radius (#2508) and focusable group disablement
  * @position Testing; validates ButtonGroup component implementation
  *
  * SYNC: When ButtonGroup component changes, update tests to match new behavior
@@ -163,8 +163,14 @@ describe('ButtonGroup', () => {
     );
 
     expect(screen.getByRole('group')).toHaveAttribute('aria-disabled', 'true');
-    expect(screen.getByRole('button', {name: 'Copy'})).toBeDisabled();
-    expect(screen.getByRole('button', {name: 'Cut'})).toBeDisabled();
+    expect(screen.getByRole('button', {name: 'Copy'})).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('button', {name: 'Cut'})).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 
   it('does not set aria-disabled when not disabled', () => {
@@ -975,7 +981,7 @@ describe('ButtonGroup', () => {
       expect(screen.getByRole('button', {name: 'after'})).toHaveFocus();
     });
 
-    it('contributes no tab stop when the whole group is disabled', async () => {
+    it('keeps exactly one tab stop when the whole group is disabled', async () => {
       const user = userEvent.setup();
       render(
         bracketed(
@@ -989,6 +995,10 @@ describe('ButtonGroup', () => {
       await user.tab();
       expect(screen.getByRole('button', {name: 'before'})).toHaveFocus();
 
+      await user.tab();
+      expect(screen.getByRole('button', {name: 'Copy'})).toHaveFocus();
+      expect(tabIndexOf('Copy')).toBe('0');
+      expect(tabIndexOf('Cut')).toBe('-1');
       await user.tab();
       expect(screen.getByRole('button', {name: 'after'})).toHaveFocus();
     });

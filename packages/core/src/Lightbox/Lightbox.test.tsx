@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file Lightbox.test.tsx
+ * @input Lightbox public gallery state and navigation controls
+ * @output Regression tests including ARIA-disabled boundary controls
+ * @position Component-local Lightbox behavior tests
+ */
+
 import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest';
 import {render, screen, fireEvent, waitFor} from '@testing-library/react';
 import {Profiler} from 'react';
@@ -215,8 +222,11 @@ describe('Lightbox', () => {
       // focused control and drops focus to <body>.
       const prev = screen.getByLabelText('Previous');
       expect(prev).toBeInTheDocument();
-      expect(prev).toBeDisabled();
-      expect(screen.getByLabelText('Next')).not.toBeDisabled();
+      expect(prev).toHaveAttribute('aria-disabled', 'true');
+      expect(screen.getByLabelText('Next')).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
     });
 
     it('keeps next mounted and disabled on last item', () => {
@@ -230,8 +240,11 @@ describe('Lightbox', () => {
       );
       const next = screen.getByLabelText('Next');
       expect(next).toBeInTheDocument();
-      expect(next).toBeDisabled();
-      expect(screen.getByLabelText('Previous')).not.toBeDisabled();
+      expect(next).toHaveAttribute('aria-disabled', 'true');
+      expect(screen.getByLabelText('Previous')).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
     });
 
     it('does not drop focus to <body> when navigating to the last item', () => {

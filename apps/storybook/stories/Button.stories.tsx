@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file Button.stories.tsx
+ * @input Button's public appearance, activation, and disabled props
+ * @output Interactive Button examples, including retained focus on disablement
+ * @position Storybook demonstrations of the Button surface
+ */
+
 import {useState} from 'react';
 import type {Meta, StoryObj} from '@storybook/react';
 import * as stylex from '@stylexjs/stylex';
@@ -105,6 +112,25 @@ export const Disabled: Story = {
     variant: 'primary',
     isDisabled: true,
   },
+};
+
+function DisabledTransitionExample() {
+  const [isDisabled, setIsDisabled] = useState(false);
+  return (
+    <VStack gap={3}>
+      <Button
+        label="Save draft"
+        isDisabled={isDisabled}
+        onClick={() => setIsDisabled(true)}
+      />
+      <Button label="Enable save" onClick={() => setIsDisabled(false)} />
+    </VStack>
+  );
+}
+
+/** Activate Save with Enter: focus stays there, and Tab can return to it. */
+export const DisabledTransition: Story = {
+  render: () => <DisabledTransitionExample />,
 };
 
 export const SizeVariants: Story = {

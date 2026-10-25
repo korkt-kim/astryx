@@ -4,7 +4,7 @@
  * @file useListFocus.test.tsx
  * @input Uses vitest, @testing-library/react, useListFocus hook
  * @output Unit tests for useListFocus disabled-item skipping, navigation,
- *   Escape consumption, and RTL auto-detection
+ *   all-disabled roving entry, Escape consumption, and RTL auto-detection
  * @position Testing; validates useListFocus.ts keyboard navigation
  *
  * SYNC: When useListFocus.ts changes, update tests to match new behavior
@@ -118,10 +118,12 @@ const ROVING_LABELS = ['A', 'B', 'C'];
 function RovingToolbar({
   labels = ROVING_LABELS,
   disabledLabels = NO_DISABLED,
+  ariaDisabledLabels = NO_DISABLED,
   ...opts
 }: {
   labels?: string[];
   disabledLabels?: string[];
+  ariaDisabledLabels?: string[];
 } & Parameters<typeof useListFocus>[0]) {
   const {listRef, handleKeyDown, handleFocus} = useListFocus<HTMLDivElement>({
     itemSelector: 'button, input, [tabindex]',
@@ -140,6 +142,7 @@ function RovingToolbar({
           key={label}
           type="button"
           disabled={disabledLabels.includes(label)}
+          aria-disabled={ariaDisabledLabels.includes(label) || undefined}
           data-testid={label}>
           {label}
         </button>
@@ -154,6 +157,110 @@ describe('useListFocus roving tabindex (hasRovingTabIndex)', () => {
     expect(screen.getByTestId('A')).toHaveAttribute('tabindex', '0');
     expect(screen.getByTestId('B')).toHaveAttribute('tabindex', '-1');
     expect(screen.getByTestId('C')).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('keeps one focusable entry when every item is aria-disabled', () => {
+    render(<RovingToolbar ariaDisabledLabels={ROVING_LABELS} />);
+    expect(screen.getByTestId('A')).toHaveAttribute('tabindex', '0');
+    expect(screen.getByTestId('B')).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByTestId('C')).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('preserves the focused entry through whole-group disablement and re-enablement', () => {
+    const {rerender} = render(<RovingToolbar />);
+    const toolbar = screen.getByRole('toolbar');
+    screen.getByTestId('A').focus();
+    fireEvent.keyDown(toolbar, {key: 'ArrowRight'});
+    const current = screen.getByTestId('B');
+    rerender(<RovingToolbar ariaDisabledLabels={ROVING_LABELS} />);
+    expect(current).toHaveFocus();
+    expect(current).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(toolbar, {key: 'ArrowRight'});
+    expect(current).toHaveFocus();
+    rerender(<RovingToolbar />);
+    expect(current).toHaveFocus();
+    expect(current).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(toolbar, {key: 'ArrowRight'});
+    expect(screen.getByTestId('C')).toHaveFocus();
+  });
+
+  it('never promotes a natively disabled item as the unavailable entry', () => {
+    render(
+      <RovingToolbar disabledLabels={['A']} ariaDisabledLabels={['B', 'C']} />,
+    );
+    expect(screen.getByTestId('A')).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByTestId('B')).toHaveAttribute('tabindex', '0');
+    expect(screen.getByTestId('C')).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('does not promote hidden, inert, or nonfocusable disabled rows', () => {
+    function UnavailableRows() {
+      const {listRef} = useListFocus<HTMLDivElement>({
+        itemSelector: '[role="menuitem"]',
+        hasRovingTabIndex: true,
+      });
+      return (
+        <div ref={listRef}>
+          <button type="button" role="menuitem" aria-disabled="true" hidden>
+            Hidden
+          </button>
+          <button type="button" role="menuitem" aria-disabled="true" inert>
+            Inert
+          </button>
+          <div role="menuitem" aria-disabled="true">
+            Static
+          </div>
+          <div style={{display: 'none'}}>
+            <button type="button" role="menuitem" aria-disabled="true">
+              CSS hidden
+            </button>
+          </div>
+          <button
+            type="button"
+            role="menuitem"
+            aria-disabled="true"
+            style={{visibility: 'hidden'}}>
+            Invisible
+          </button>
+          <div role="menuitem" aria-disabled="true" tabIndex={-1}>
+            Available for focus
+          </div>
+        </div>
+      );
+    }
+    const {container, rerender} = render(<UnavailableRows />);
+    rerender(<UnavailableRows />);
+    expect(screen.getByText('Static')).not.toHaveAttribute('tabindex');
+    expect(container.querySelectorAll('[tabindex="0"]')).toHaveLength(1);
+    expect(screen.getByText('Available for focus')).toHaveAttribute(
+      'tabindex',
+      '0',
+    );
+  });
+
+  it('stamps naturally focusable ARIA-disabled entries without an authored tabindex', () => {
+    function EditableRows() {
+      const {listRef} = useListFocus<HTMLDivElement>({
+        itemSelector: '[contenteditable]',
+        hasRovingTabIndex: true,
+      });
+      return (
+        <div ref={listRef}>
+          <div contentEditable aria-disabled="true" data-testid="first" />
+          <div contentEditable aria-disabled="true" data-testid="second" />
+        </div>
+      );
+    }
+    render(<EditableRows />);
+    expect(screen.getByTestId('first')).toHaveAttribute('tabindex', '0');
+    expect(screen.getByTestId('second')).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('leaves an entirely native-disabled list without a tab stop', () => {
+    const {container} = render(
+      <RovingToolbar disabledLabels={ROVING_LABELS} />,
+    );
+    expect(container.querySelector('[tabindex="0"]')).toBeNull();
   });
 
   it('promotes the first ENABLED item when the first is disabled (repair)', () => {

@@ -5,7 +5,8 @@
 /**
  * @file Carousel.tsx
  * @input Uses React, StyleX, useScrollOverflow, useLayer, Button, Icon, theme tokens
- * @output Exports Carousel component
+ * @output Exports Carousel with hidden edge actions excluded from Tab/ARIA and
+ *   focus handed to the scroll area when an edge action runs out
  * @position Horizontal scroll container with fade-edge overflow indication,
  *   optional prev/next buttons on the top layer, scroll-snap, a 1px
  *   visual bleed allowance for child selection indicators, and Shift + wheel
@@ -650,13 +651,12 @@ export function Carousel({
                 variant="ghost"
                 size="sm"
                 isIconOnly
-                // Disabled when there's nothing to scroll toward. Keeps the
-                // button mounted (stable layout) but removes it from the tab
-                // order and a11y tree while it's visually hidden, so keyboard
-                // users don't land on an invisible control. The Effect above
-                // hands focus to the scroll area when the state behind this
-                // one flips it disabled.
+                // A run-out edge is removed from interaction, not merely
+                // disabled. Keep it mounted for layout; the Effect above hands
+                // any held focus to the scroll area (component:Carousel FR2).
                 isDisabled={!canScrollStart}
+                tabIndex={canScrollStart ? 0 : -1}
+                aria-hidden={!canScrollStart || undefined}
                 onFocus={() => {
                   focusedNavRef.current = 'start';
                 }}
@@ -689,9 +689,10 @@ export function Carousel({
                 variant="ghost"
                 size="sm"
                 isIconOnly
-                // See "Scroll left" — disabled while visually hidden so the
-                // button stays mounted but out of the tab order / a11y tree.
+                // See "Scroll left": hidden edge actions leave Tab and ARIA.
                 isDisabled={!canScrollEnd}
+                tabIndex={canScrollEnd ? 0 : -1}
+                aria-hidden={!canScrollEnd || undefined}
                 onFocus={() => {
                   focusedNavRef.current = 'end';
                 }}

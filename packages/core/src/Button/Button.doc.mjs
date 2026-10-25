@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file Button.doc.mjs
+ * @input Public Button action, navigation, focus, and presentation contracts
+ * @output Consumer props and usage guidance for Button
+ * @position Shipped Button documentation
+ */
+
 /** @type {import('@astryxdesign/cli/authoring').ComponentDoc} */
 
 export const docs = {
@@ -150,7 +157,7 @@ export const docs = {
     {
       name: 'isDisabled',
       type: 'boolean',
-      description: 'Disables the button. When a tooltip is present, uses aria-disabled instead of native disabled so the button stays focusable.',
+      description: 'Blocks activation with aria-disabled while keeping focus and the enabled tab order, with or without a tooltip. Disabled buttons do not submit or reset forms, and their name/value is excluded from submission.',
       default: 'false',
     },
     {
@@ -210,7 +217,7 @@ export const docs = {
       name: 'href',
       type: 'string',
       description:
-        'When provided, renders the button as a link element (<a> or custom link component). The destination follows the shared navigation rule described on the Link `href` prop.',
+        'When provided, renders the button as a link element (<a> or custom link component). Disabled or non-interruptible loading links keep the mounted focus owner and tab eligibility, but have no native destination and cannot navigate. Custom link components must forward the anchor ref and DOM event handlers. The destination follows the shared navigation rule described on the Link `href` prop.',
     },
     {
       name: 'as',
@@ -350,7 +357,7 @@ export const docsZh = {
     {
       name: 'isDisabled',
       type: 'boolean',
-      description: '禁用按钮。存在工具提示时，使用 aria-disabled 代替原生 disabled 以保持可聚焦。',
+      description: '使用 aria-disabled 阻止激活，无论是否有工具提示都保持焦点和原有 Tab 顺序。禁用按钮不会提交或重置表单，其 name/value 不参与提交。',
       default: 'false',
     },
     {name: 'icon', type: 'ReactNode', description: '图标元素。未显式指定尺寸的 Astryx Icon 在 sm/md 按钮中默认为 sm，在 lg 按钮中默认为 md。仅提供 icon 而不提供 children 时，按钮渲染为正方形的纯图标按钮。'},
@@ -428,6 +435,6 @@ export const docsDense = {
     tooltip: 'tooltip on hover',
     onClick: 'standard click handler; fires before clickAction',
     clickAction: 'async click handler; shows loading while promise pending',
-    isDisabled: 'disables button; uses aria-disabled when tooltip present',
+    isDisabled: 'aria-disabled; keeps focus/tab order, blocks activation and form submit/reset; name/value excluded',
   },
 };

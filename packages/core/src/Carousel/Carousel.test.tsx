@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file Carousel.test.tsx
+ * @input Carousel public scrolling and edge-navigation interfaces
+ * @output Tests for scrolling, hidden-edge Tab/ARIA exclusion, and focus handoff
+ * @position Component-local Carousel behavior tests
+ */
+
 import {describe, it, expect, vi} from 'vitest';
 import {createRef} from 'react';
 import {render, screen, fireEvent} from '@testing-library/react';
@@ -131,12 +138,9 @@ describe('Carousel', () => {
     expect(screen.getByLabelText('Scroll right')).toBeInTheDocument();
   });
 
-  it('disables edge scroll buttons instead of removing them from the tab order', () => {
-    // In jsdom there is no measurable overflow, so both edges are at rest and
-    // the scroll buttons are in their hidden/inert state. They must stay
-    // mounted but be disabled — a disabled <button> is skipped by the tab
-    // order and hidden from the a11y tree, so keyboard users don't focus an
-    // invisible control (WCAG 2.4.7).
+  it('excludes hidden edge scroll buttons from Tab and the accessibility tree', () => {
+    // In jsdom there is no measurable overflow. Hidden edge actions stay
+    // mounted for layout, but are removed from Tab and accessibility exposure.
     render(
       <Carousel aria-label="Edge state">
         <div>Item 1</div>
@@ -147,8 +151,12 @@ describe('Carousel', () => {
     const right = screen.getByLabelText('Scroll right');
     expect(left).toBeInTheDocument();
     expect(right).toBeInTheDocument();
-    expect(left).toBeDisabled();
-    expect(right).toBeDisabled();
+    for (const button of [left, right]) {
+      expect(button).not.toHaveAttribute('disabled');
+      expect(button).toHaveAttribute('tabindex', '-1');
+      expect(button).toHaveAttribute('aria-hidden', 'true');
+      expect(button).toHaveAttribute('aria-disabled', 'true');
+    }
   });
 
   describe('Shift + wheel horizontal scroll', () => {
@@ -535,7 +543,7 @@ describe('Carousel', () => {
       const next = screen.getByLabelText('Scroll right');
       await user.click(next);
 
-      expect(next).toBeDisabled();
+      expect(next).toHaveAttribute('aria-disabled', 'true');
       expect(document.activeElement).toBe(getScroller());
       expect(document.activeElement).not.toBe(document.body);
     });
@@ -558,7 +566,7 @@ describe('Carousel', () => {
       const previous = screen.getByLabelText('Scroll left');
       await user.click(previous);
 
-      expect(previous).toBeDisabled();
+      expect(previous).toHaveAttribute('aria-disabled', 'true');
       expect(document.activeElement).toBe(getScroller());
     });
 
@@ -602,7 +610,7 @@ describe('Carousel', () => {
       const next = screen.getByLabelText('Scroll right');
       await user.click(next);
 
-      expect(next).toBeDisabled();
+      expect(next).toHaveAttribute('aria-disabled', 'true');
       expect(document.activeElement).toBe(getScroller());
     });
 
@@ -623,7 +631,7 @@ describe('Carousel', () => {
       const next = screen.getByLabelText('Scroll right');
       await user.click(next);
 
-      expect(next).toBeDisabled();
+      expect(next).toHaveAttribute('aria-disabled', 'true');
       expect(document.activeElement).toBe(getScroller());
     });
 
@@ -648,8 +656,14 @@ describe('Carousel', () => {
 
       await user.click(screen.getByLabelText('Scroll right'));
 
-      expect(screen.getByLabelText('Scroll right')).toBeDisabled();
-      expect(screen.getByLabelText('Scroll left')).toBeDisabled();
+      expect(screen.getByLabelText('Scroll right')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+      expect(screen.getByLabelText('Scroll left')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
       expect(document.activeElement).toBe(scroller);
       expect(document.activeElement).not.toBe(document.body);
     });
@@ -678,7 +692,10 @@ describe('Carousel', () => {
       scroller.scrollLeft = 200;
       fireEvent.scroll(scroller);
 
-      expect(screen.getByLabelText('Scroll right')).toBeDisabled();
+      expect(screen.getByLabelText('Scroll right')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
       expect(document.activeElement).toBe(document.body);
     });
 

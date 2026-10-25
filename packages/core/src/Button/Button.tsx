@@ -5,7 +5,7 @@
 /**
  * @file Button.tsx
  * @input Uses React, ButtonHTMLAttributes, ReactNode, i18n (useTranslator), group contexts
- * @output Exports Button component, ButtonProps, ButtonVariant types
+ * @output Exports focusable, guarded Button component, ButtonProps, ButtonVariant types
  * @position Core implementation; consumed by index.ts, tested by Button.test.tsx
  *
  * SYNC: When modified, update these files to stay in sync:
@@ -293,7 +293,8 @@ export interface ButtonProps extends BaseProps<HTMLButtonElement> {
    */
   elevation?: Elevation;
   /**
-   * Whether the button is disabled.
+   * Whether the button is non-operable. Disabled buttons keep focus and their
+   * enabled tab eligibility while exposing aria-disabled.
    * @default false
    */
   isDisabled?: boolean;
@@ -359,8 +360,8 @@ export interface ButtonProps extends BaseProps<HTMLButtonElement> {
   tooltip?: string;
   /**
    * When provided, renders the button as a link (`<a>` or custom component).
-   * When the button is disabled, still renders as `<button>` regardless of href
-   * (disabled links are an accessibility anti-pattern).
+   * Disablement preserves the mounted focus owner but removes its native
+   * destination and blocks navigation, including custom-router activation.
    */
   href?: string;
   /**
@@ -535,9 +536,10 @@ const groupStyles = stylex.create({
  * Wrap your app in <Theme> to apply a theme.
  * Themes can provide component-level variant overrides via theme.components.button.variants
  *
- * When `href` is provided (and the button is not disabled), renders as an `<a>`
- * element (or custom link component) with full button styling, enabling native
- * browser behaviors like right-click → open in new tab and Cmd+Click.
+ * When `href` is provided, renders as an `<a>` element (or custom link
+ * component) with full button styling. Enabled links retain native browser
+ * behaviors like right-click → open in new tab and Cmd+Click; disabled links
+ * keep focus without exposing a navigable destination.
  *
  * @example
  * ```
@@ -633,19 +635,14 @@ export function Button({
 
   const LinkComponent = useLinkComponent(as);
 
-  // Render as link when href is provided and the button is not TRULY
-  // disabled. Disabled links are an accessibility anti-pattern, so a
-  // genuinely isDisabled/group-disabled button falls back to <button>.
-  // Busy-only does NOT fall back: swapping <a> for a disabled <button>
-  // mid-action would drop focus the same way the native attribute does
-  // (credit @AKnassa, #4879), which is exactly the bug this PR fixes.
-  const renderAsLink = href != null && !isTrueDisabled;
+  // Keep the same link owner through disabled and busy transitions. SafeLink
+  // guards the native destination and custom-router activation without losing
+  // the mounted node, forwarded ref, or original accepted router destination.
+  const renderAsLink = href != null;
 
-  // Use aria-disabled (button stays focusable) when busy-only, or when a
-  // tooltip is present so keyboard users can still reach it. A genuinely
-  // isDisabled/group-disabled button (not busy) keeps native disabled.
-  const useAriaDisabled =
-    buttonDisabled && (isBusyOnlyDisabled || tooltip != null);
+  // Disabled and busy controls keep their focus and tab eligibility. The
+  // activation guards, not native disabled, enforce non-operability.
+  const useAriaDisabled = buttonDisabled;
 
   // Attach tooltip behavior via the hook rather than wrapping the button in a
   // <Tooltip> element. The hook adds hover/focus triggers to the button itself,
@@ -664,7 +661,7 @@ export function Button({
       e.preventDefault();
       // A native `disabled` element never dispatches a click at all, so it
       // never reaches a wrapping element's own handler either. An
-      // aria-disabled button (busy-only, or with a tooltip) is still a real,
+      // aria-disabled button (disabled or busy) is still a real,
       // interactive element the DOM keeps dispatching clicks on —
       // preventDefault alone only cancels the button's OWN default action
       // (form submit, link navigation), not propagation. Without this, an
@@ -687,17 +684,40 @@ export function Button({
     }
   };
 
-  // When aria-disabled, suppress activation keys (Enter/Space) but allow
-  // other keys (Escape, arrows) to reach consumer handlers.
-  const handleKeyDown = useAriaDisabled
-    ? (e: React.KeyboardEvent<HTMLButtonElement>) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-        } else {
-          props.onKeyDown?.(e);
-        }
+  // Guard before caller capture/bubble activation handlers, not just onClick.
+  // Focus, blur, hover inspection, and non-activation keys remain available
+  // for tooltips and composite navigation.
+  const blockActivation = (event: React.SyntheticEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  const disabledActivationProps = buttonDisabled
+    ? {
+        onClickCapture: blockActivation,
+        onDoubleClickCapture: blockActivation,
+        onAuxClickCapture: blockActivation,
+        onPointerDownCapture: blockActivation,
+        onPointerUpCapture: blockActivation,
+        onMouseDownCapture: blockActivation,
+        onMouseUpCapture: blockActivation,
+        onTouchStartCapture: blockActivation,
+        onTouchEndCapture: blockActivation,
+        onKeyDownCapture: (event: React.KeyboardEvent<HTMLButtonElement>) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            blockActivation(event);
+          } else {
+            props.onKeyDownCapture?.(event);
+          }
+        },
+        onKeyUpCapture: (event: React.KeyboardEvent<HTMLButtonElement>) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            blockActivation(event);
+          } else {
+            props.onKeyUpCapture?.(event);
+          }
+        },
       }
-    : undefined;
+    : null;
 
   // Ghost buttons are edge-compensatable — containers detect this attribute
   // via :has() and pull their own slot margins to align flush at edges.
@@ -830,6 +850,7 @@ export function Button({
       <LinkComponent
         ref={mergedButtonRef as React.Ref<HTMLAnchorElement>}
         href={href}
+        _isDisabled={buttonDisabled}
         target={target}
         rel={rel}
         {...sharedMergedProps}
@@ -838,12 +859,14 @@ export function Button({
         {...ariaLabelProp}
         {...describedByProp}
         {...edgeCompAttr}
+        role={props.role ?? 'link'}
+        tabIndex={props.tabIndex ?? 0}
         // A caller's own busy or disabled state is kept, so a component that
         // hands these props to a Button (a caller-rendered trigger) is heard.
         aria-busy={isLoadingState || props['aria-busy'] || undefined}
         aria-disabled={useAriaDisabled || props['aria-disabled'] || undefined}
         onClick={handleClick}
-        {...(handleKeyDown ? {onKeyDown: handleKeyDown} : null)}>
+        {...disabledActivationProps}>
         {buttonContent}
       </LinkComponent>
     );
@@ -852,19 +875,21 @@ export function Button({
       <button
         ref={mergedButtonRef}
         type={type}
-        disabled={useAriaDisabled ? undefined : buttonDisabled}
         {...sharedMergedProps}
         {...pressFeedback}
         {...props}
         {...ariaLabelProp}
         {...describedByProp}
         {...edgeCompAttr}
+        // A disabled submitter contributes no value, including when FormData
+        // is constructed with an explicit submitter.
+        name={isTrueDisabled ? undefined : props.name}
         // A caller's own busy or disabled state is kept, so a component that
         // hands these props to a Button (a caller-rendered trigger) is heard.
         aria-busy={isLoadingState || props['aria-busy'] || undefined}
         aria-disabled={useAriaDisabled || props['aria-disabled'] || undefined}
         onClick={handleClick}
-        {...(handleKeyDown ? {onKeyDown: handleKeyDown} : null)}>
+        {...disabledActivationProps}>
         {buttonContent}
       </button>
     );

@@ -6,7 +6,8 @@
  * @file useListFocus.ts
  * @input Uses React useCallback, useRef, useIsomorphicLayoutEffect,
  *   isRtlElement
- * @output Exports useListFocus hook for linear list keyboard navigation
+ * @output Exports useListFocus hook for linear list keyboard navigation and a
+ *   single roving entry even when every eligible item is ARIA-disabled
  * @position Core hook; used by TabMenu for dropdown menu navigation, Toolbar
  *   for roving tabindex, ButtonGroup, ContextMenu, NavHeadingMenu, and more.
  *   Auto-detects RTL from the container's computed direction so horizontal
@@ -20,6 +21,7 @@
 
 import {useCallback, useRef} from 'react';
 import {isRtlElement} from './isRtlElement';
+import {FOCUSABLE_SELECTOR} from './focusableSelector';
 import {useIsomorphicLayoutEffect} from './useIsomorphicLayoutEffect';
 
 /**
@@ -97,7 +99,9 @@ export interface UseListFocusOptions {
   /**
    * Roving-tabindex ownership. When true, the hook manages a single tab stop
    * across the items: exactly one enabled item carries `tabindex="0"` and the
-   * rest `tabindex="-1"`. The tab stop is stamped on mount and repaired
+   * rest `tabindex="-1"`. If all items are disabled, one focusable ARIA-disabled
+   * item remains the entry; arrow navigation still skips disabled items.
+   * The tab stop is stamped on mount and repaired
    * whenever items mount/unmount or toggle disabled, and moves with arrow
    * navigation. Attach the returned {@link UseListFocusReturn.handleFocus} to
    * the container's `onFocus` to keep the stop in sync after clicks or
@@ -341,9 +345,8 @@ export function useListFocus<T extends HTMLElement = HTMLElement>(
   const listRef = useRef<T>(null);
 
   /**
-   * Whether an item is disabled and therefore cannot receive DOM focus.
-   * A `.focus()` call on such an element silently no-ops, so navigation must
-   * skip these to avoid freezing on a disabled item (menus-4, navigation-5).
+   * Whether an item is unavailable for arrow navigation. ARIA-disabled items
+   * can still receive DOM focus, but keep the composite's disabled-item policy.
    */
   const isItemDisabled = useCallback((el: HTMLElement): boolean => {
     return (
@@ -457,17 +460,54 @@ export function useListFocus<T extends HTMLElement = HTMLElement>(
    * Stamp the roving tab stop: exactly one enabled item is tabbable (0), the
    * rest are -1. Prefer keeping the currently-tabbable item if it is still
    * enabled; otherwise promote the first enabled item (tab-stop repair).
+   * With no enabled items, preserve one focusable ARIA-disabled entry without
+   * making native-disabled, hidden, inert, or nonfocusable rows reachable.
    */
   const syncTabStops = useCallback(() => {
     const items = getItems();
     const enabled = items.filter(el => !isItemDisabled(el));
-    if (enabled.length === 0) {
-      return;
-    }
-    const current = enabled.find(el => el.getAttribute('tabindex') === '0');
-    const tabbable = current ?? enabled[0];
+    const eligible =
+      enabled.length > 0
+        ? enabled
+        : items.filter(el => {
+            if (
+              el.getAttribute('aria-disabled') !== 'true' ||
+              el.matches(':disabled,[disabled],input[type="hidden"]') ||
+              el.closest('[hidden],[inert]') ||
+              !el.matches(`${FOCUSABLE_SELECTOR},[tabindex]`)
+            ) {
+              return false;
+            }
+            // CSS-hidden controls also cannot be the fallback entry. Walk ancestors
+            // for display:none; visibility is inherited by the element itself.
+            const visibility = getComputedStyle(el).visibility;
+            if (visibility === 'hidden' || visibility === 'collapse') {
+              return false;
+            }
+            for (
+              let node: HTMLElement | null = el;
+              node;
+              node = node.parentElement
+            ) {
+              if (getComputedStyle(node).display === 'none') {
+                return false;
+              }
+            }
+            return true;
+          });
+    const current = eligible.find(el => el.getAttribute('tabindex') === '0');
+    const tabbable = current ?? eligible[0];
     for (const el of items) {
-      setTabIndex(el, el === tabbable ? 0 : -1);
+      // Do not turn a static disabled row into a focusable candidate on the
+      // next repair by inventing its first tabindex attribute.
+      if (
+        enabled.length > 0 ||
+        eligible.includes(el) ||
+        el.hasAttribute('tabindex') ||
+        el.tabIndex >= 0
+      ) {
+        setTabIndex(el, el === tabbable ? 0 : -1);
+      }
     }
   }, [getItems, isItemDisabled, setTabIndex]);
 

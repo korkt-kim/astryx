@@ -3,7 +3,7 @@
 /**
  * @file IconButton.test.tsx
  * @input Uses vitest, @testing-library/react, IconButton component
- * @output Unit tests for IconButton component behavior
+ * @output Unit tests for IconButton behavior, including focusable disablement
  * @position Testing; validates IconButton.tsx implementation
  *
  * SYNC: When IconButton.tsx changes, update tests to match new behavior
@@ -116,7 +116,10 @@ describe('IconButton', () => {
     );
 
     const button = screen.getByRole('button');
-    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).not.toHaveAttribute('disabled');
+    await user.tab();
+    expect(button).toHaveFocus();
     await user.click(button);
     expect(handleClick).not.toHaveBeenCalled();
   });

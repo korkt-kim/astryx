@@ -8,7 +8,8 @@
  *   BUTTON_PATTERN_EXCLUSIONS, the parts deliberately left to another pattern.
  * @position The binding inventory required before any assertion moves
  *   (`docs/specs/AST-021/spec.md` FR2, FR4), and the single definition of what
- *   each state IS. Disabled ClickableCard remains focusable and inert under
+ *   each state IS. Disabled Button-family controls and ClickableCard stay
+ *   focusable and inert under
  *   `docs/specs/AST-085-focusable-disabled/spec.md` FR1 and FR2.
  *
  * A state earns a row when it can change what the button pattern promises: a
@@ -159,8 +160,8 @@ export const BUTTON_BINDING_STATES = [
   {
     id: 'button-disabled',
     binding: 'Button',
-    summary: 'a hard-disabled button: unavailable, and out of the tab sequence',
-    facts: facts({operable: false, focusable: false, unavailable: true}),
+    summary: 'a disabled button: unavailable, focusable, and inert',
+    facts: facts({operable: false, unavailable: true}),
     visibleLabel: 'Save changes',
     storyId: 'a11y-button-pattern--button-disabled',
   },
@@ -168,7 +169,7 @@ export const BUTTON_BINDING_STATES = [
     id: 'button-disabled-with-tooltip',
     binding: 'Button',
     summary:
-      'a disabled button kept focusable by its tooltip, so the reason it is unavailable stays reachable',
+      'a focusable disabled button with a tooltip explaining why it is unavailable',
     facts: facts({operable: false, unavailable: true, described: true}),
     visibleLabel: 'Save changes',
     storyId: 'a11y-button-pattern--button-disabled-with-tooltip',
@@ -195,8 +196,8 @@ export const BUTTON_BINDING_STATES = [
   {
     id: 'icon-button-disabled',
     binding: 'IconButton',
-    summary: 'a disabled icon button',
-    facts: facts({operable: false, focusable: false, unavailable: true}),
+    summary: 'a focusable disabled icon button',
+    facts: facts({operable: false, unavailable: true}),
     visibleLabel: null,
     storyId: 'a11y-button-pattern--icon-button-disabled',
   },
@@ -263,8 +264,8 @@ export const BUTTON_BINDING_STATES = [
   {
     id: 'chat-send-disabled',
     binding: 'ChatSendButton',
-    summary: 'the send control with nothing to send',
-    facts: facts({operable: false, focusable: false, unavailable: true}),
+    summary: 'the focusable send control with nothing to send',
+    facts: facts({operable: false, unavailable: true}),
     visibleLabel: null,
     storyId: 'a11y-button-pattern--chat-send-disabled',
   },

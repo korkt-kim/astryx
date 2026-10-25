@@ -4,7 +4,7 @@
  * @file ToggleButton.test.tsx
  * @input Uses vitest, @testing-library/react, ToggleButton, ToggleButtonGroup
  * @output Unit tests for ToggleButton callback/Action order, pending state,
- *   group-owned selection, and ToggleButtonGroup
+ *   group-owned selection, focusable disablement, and ToggleButtonGroup
  *
  * SYNC: When ToggleButton.tsx or ToggleButtonGroup.tsx changes, update tests
  */
@@ -828,9 +828,9 @@ describe.each(['single', 'multiple'] as const)(
  * a group disables everything it contains, and a member can disable itself
  * while the group stays enabled. Neither source may cancel the other out.
  *
- * The tooltip cases are here at the attribute and callback level only. A
- * tooltip'd disabled toggle carries `aria-disabled` instead of the native
- * `disabled` attribute, so whether a REAL mouse press is refused is an engine
+ * The disabled cases are here at the attribute and callback level only. A
+ * disabled toggle carries `aria-disabled` instead of the native `disabled`
+ * attribute, so whether a REAL mouse press is refused is an engine
  * fact that jsdom's synthetic click cannot settle — that half lives in
  * ./__tests__/ToggleButton.a11y.chromium.spec.ts.
  */
@@ -845,9 +845,13 @@ describe('disabled state', () => {
       </ToggleButtonGroup>,
     );
 
-    expect(screen.getByRole('button', {name: 'List'})).toBeDisabled();
+    const member = screen.getByRole('button', {name: 'List'});
+    expect(member).toHaveAttribute('aria-disabled', 'true');
+    expect(member).not.toHaveAttribute('disabled');
+    await user.tab();
+    expect(member).toHaveFocus();
 
-    await user.click(screen.getByRole('button', {name: 'List'}));
+    await user.click(member);
     expect(handleChange).not.toHaveBeenCalled();
   });
 
@@ -880,9 +884,13 @@ describe('disabled state', () => {
       </ToggleButtonGroup>,
     );
 
-    expect(screen.getByRole('button', {name: 'List'})).toBeDisabled();
+    const member = screen.getByRole('button', {name: 'List'});
+    expect(member).toHaveAttribute('aria-disabled', 'true');
+    expect(member).not.toHaveAttribute('disabled');
+    await user.tab();
+    expect(member).toHaveFocus();
 
-    await user.click(screen.getByRole('button', {name: 'List'}));
+    await user.click(member);
     expect(handleChange).not.toHaveBeenCalled();
   });
 

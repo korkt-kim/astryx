@@ -3,7 +3,7 @@
 /**
  * @file Button.test.tsx
  * @input Uses vitest, @testing-library/react, Button component
- * @output Unit tests for Button component behavior
+ * @output Unit tests for Button behavior, including focusable disabled states
  * @position Testing; validates Button.tsx implementation
  *
  * SYNC: When Button.tsx changes, update tests to match new behavior
@@ -144,7 +144,8 @@ describe('Button', () => {
   it('keeps the dimmed treatment for explicitly disabled buttons', () => {
     render(<Button label="Submit" isDisabled />);
     const button = screen.getByRole('button');
-    expect(button).toBeDisabled();
+    expect(button).not.toHaveAttribute('disabled');
+    expect(button).toHaveAttribute('aria-disabled', 'true');
     expect(button.className).toContain('styles.inactive');
     expect(button.className).toContain('styles.disabled');
   });
@@ -623,21 +624,19 @@ describe('Button', () => {
     expect(handleKeyDown).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps native disabled (not aria-disabled) when isDisabled and not busy, even without a tooltip', () => {
+  it('keeps disabled buttons focusable without a tooltip', () => {
     render(<Button label="Save" isDisabled />);
     const button = screen.getByRole('button');
-    expect(button).toHaveAttribute('disabled');
-    expect(button).not.toHaveAttribute('aria-disabled');
+    expect(button).not.toHaveAttribute('disabled');
+    expect(button).toHaveAttribute('aria-disabled', 'true');
   });
 
-  it('keeps native disabled when isDisabled and isLoading are both true (isDisabled wins)', () => {
+  it('keeps explicit disabled paint when also loading without losing focusability', () => {
     render(<Button label="Save" isDisabled isLoading />);
     const button = screen.getByRole('button');
-    // "isDisabled behavior unchanged: that stays native disabled" — busy-only
-    // aria-disabled is only for the case where busy is the SOLE reason the
-    // button can't be clicked, not when it's also genuinely isDisabled.
-    expect(button).toHaveAttribute('disabled');
-    expect(button).not.toHaveAttribute('aria-disabled');
+    expect(button).not.toHaveAttribute('disabled');
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button.className).toContain('styles.disabled');
   });
 
   it('has a live region that announces loading state', () => {
@@ -823,7 +822,8 @@ describe('Button', () => {
     render(<Button label="Docs" href="https://example.com" isLoading />);
     const link = screen.getByRole('link', {name: 'Docs'});
     expect(link.tagName).toBe('A');
-    expect(link).toHaveAttribute('href', 'https://example.com');
+    expect(link).not.toHaveAttribute('href');
+    expect(link).toHaveAttribute('tabindex', '0');
     expect(link).toHaveAttribute('aria-busy', 'true');
     expect(link).toHaveAttribute('aria-disabled', 'true');
     expect(link).not.toHaveAttribute('disabled');
@@ -840,11 +840,13 @@ describe('Button', () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
-  it('falls back to <button disabled> for a truly disabled href Button', () => {
+  it('keeps a focusable destination-less link for a disabled href Button', () => {
     render(<Button label="Docs" href="https://example.com" isDisabled />);
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
-    const button = screen.getByRole('button', {name: 'Docs'});
-    expect(button).toBeDisabled();
+    const link = screen.getByRole('link', {name: 'Docs'});
+    expect(link).not.toHaveAttribute('href');
+    expect(link).not.toHaveAttribute('disabled');
+    expect(link).toHaveAttribute('aria-disabled', 'true');
+    expect(link).toHaveAttribute('tabindex', '0');
   });
 });
 

@@ -5,7 +5,7 @@
 /**
  * @file BaseTypeahead.tsx
  * @input Uses React, StyleX, usePopover, TypeaheadItem
- * @output Exports BaseTypeahead; disabled inputs keep focus/inspection and guard capture/bubble activation or stale work
+ * @output Exports BaseTypeahead; disabled inputs keep focus/inspection and guard activation, paste/drop, or stale work
  * @position Core implementation; used by Typeahead and Tokenizer
  *
  * Pure combobox engine: input, search, keyboard navigation, dropdown.
@@ -1228,10 +1228,10 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
     };
   }, []);
 
-  // BaseProps also accepts activation handlers outside the owned bubble
-  // handlers below. Guard each phase rather than stopping propagation or
-  // cancelling pointer defaults: focus, text selection, copy, context menus,
-  // and hover inspection must still work on the read-only disabled input.
+  // BaseProps also accepts activation and paste/drop mutation handlers
+  // outside the owned bubble handlers below. Guard each phase rather than
+  // stopping propagation or cancelling native inspection: focus, selection,
+  // copy/cut, context menus, and hover still work on the read-only input.
   function guardInputActivation<E extends React.SyntheticEvent>(
     handler: ((event: E) => void) | undefined,
   ) {
@@ -1269,6 +1269,10 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
         onTouchStart={guardInputActivation(rest.onTouchStart)}
         onTouchEndCapture={guardInputActivation(rest.onTouchEndCapture)}
         onTouchEnd={guardInputActivation(rest.onTouchEnd)}
+        onPasteCapture={guardInputActivation(rest.onPasteCapture)}
+        onPaste={guardInputActivation(rest.onPaste)}
+        onDropCapture={guardInputActivation(rest.onDropCapture)}
+        onDrop={guardInputActivation(rest.onDrop)}
         ref={useMergedRefs(ref, inputRef, fallbackAnchorRef)}
         id={inputId}
         type="text"

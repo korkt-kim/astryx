@@ -3,7 +3,7 @@
 /**
  * @file BaseTypeahead.test.tsx
  * @input BaseTypeahead public props, synchronous and asynchronous SearchSources
- * @output Combobox contracts, including disabled capture/bubble activation guards, inspection, and stale work
+ * @output Combobox contracts, including disabled activation/transfer guards, inspection, and stale work
  * @position Colocated verification for BaseTypeahead
  */
 
@@ -363,7 +363,66 @@ describe('BaseTypeahead', () => {
     },
   );
 
-  it('preserves disabled focus, hover, context-menu, selection, and copy inspection', async () => {
+  it.each([
+    ['paste', 'clipboardData', 'onPasteCapture', 'onPaste'],
+    ['drop', 'dataTransfer', 'onDropCapture', 'onDrop'],
+  ] as const)(
+    'withholds disabled %s mutation callbacks while preserving enabled phases and cancellation',
+    (event, transferProp, capture, bubble) => {
+      const calls: string[][] = [];
+      const onChange = vi.fn();
+      const onChangeQuery = vi.fn();
+      const record =
+        (phase: string) => (event: React.ClipboardEvent | React.DragEvent) => {
+          const transfer =
+            'clipboardData' in event ? event.clipboardData : event.dataTransfer;
+          calls.push([phase, transfer.getData('text/plain')]);
+          event.preventDefault();
+        };
+      const field = (isDisabled: boolean) => (
+        <BaseTypeahead
+          searchSource={emptySource}
+          value={null}
+          onChange={onChange}
+          onChangeQuery={onChangeQuery}
+          isDisabled={isDisabled}
+          {...{[capture]: record('capture'), [bubble]: record('bubble')}}
+        />
+      );
+      const {rerender} = render(field(false));
+      const input = screen.getByRole('combobox');
+      fireEvent.change(input, {target: {value: 'Original'}});
+      onChangeQuery.mockClear();
+      const transfer = {
+        getData: (format: string) =>
+          format === 'text/plain' ? 'Replacement' : '',
+      };
+      const transferText = () =>
+        fireEvent[event](input, {[transferProp]: transfer});
+      expect(transferText()).toBe(false);
+      expect(calls).toEqual([
+        ['capture', 'Replacement'],
+        ['bubble', 'Replacement'],
+      ]);
+      calls.length = 0;
+
+      rerender(field(true));
+      transferText();
+      expect(calls).toEqual([]);
+      expect(input).toHaveValue('Original');
+      expect(onChange).not.toHaveBeenCalled();
+      expect(onChangeQuery).not.toHaveBeenCalled();
+
+      rerender(field(false));
+      expect(transferText()).toBe(false);
+      expect(calls).toEqual([
+        ['capture', 'Replacement'],
+        ['bubble', 'Replacement'],
+      ]);
+    },
+  );
+
+  it('preserves disabled focus, hover, context-menu, selection, and copy/cut inspection', async () => {
     const user = userEvent.setup();
     const onFocus = vi.fn();
     const onFocusCapture = vi.fn();
@@ -374,6 +433,8 @@ describe('BaseTypeahead', () => {
     const onSelect = vi.fn();
     const onCopy = vi.fn();
     const onCopyCapture = vi.fn();
+    const onCut = vi.fn();
+    const onCutCapture = vi.fn();
     const onContextMenu = vi.fn();
     const field = (isDisabled: boolean) => (
       <>
@@ -392,6 +453,8 @@ describe('BaseTypeahead', () => {
           onSelect={onSelect}
           onCopy={onCopy}
           onCopyCapture={onCopyCapture}
+          onCut={onCut}
+          onCutCapture={onCutCapture}
           onContextMenu={onContextMenu}
         />
         <button type="button">After</button>
@@ -412,6 +475,9 @@ describe('BaseTypeahead', () => {
     expect(clipboard?.getData('text/plain')).toBe('Inspect text');
     expect(onCopy).toHaveBeenCalledOnce();
     expect(onCopyCapture).toHaveBeenCalledOnce();
+    expect(fireEvent.cut(input)).toBe(true);
+    expect(onCut).toHaveBeenCalledOnce();
+    expect(onCutCapture).toHaveBeenCalledOnce();
     fireEvent.pointerEnter(input);
     fireEvent.mouseMove(input);
     expect(onPointerEnter).toHaveBeenCalledOnce();

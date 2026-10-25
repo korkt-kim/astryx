@@ -4,8 +4,8 @@
 
 /**
  * @file RadioListItem.tsx
- * @input Uses React use, useCallback, useId, useRef, useState, RadioListContext, Item
- * @input Guards owned-radio activation-key callbacks; consumes the private disabled native name
+ * @input Uses React use, useCallback, useId, useRef, RadioListContext, Item
+ * @input Guards owned-radio activation; isolates native names across same-commit form transitions
  * @output Exports RadioListItem component, RadioListItemProps
  * @position Core implementation; consumed by index.ts, tested by RadioList.test.tsx
  *
@@ -19,14 +19,7 @@
  * - /packages/cli/assets/templates/blocks/components/RadioList/ (showcase blocks)
  */
 
-import React, {
-  use,
-  useCallback,
-  useId,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import React, {use, useCallback, useId, useRef, type ReactNode} from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type {StyleXStyles} from '@stylexjs/stylex';
 import type {BaseProps} from '../BaseProps';
@@ -278,11 +271,7 @@ export function RadioListItem({
   const labelID = useId();
   const descriptionID = useId();
   const isDisabled = context.isDisabled || isItemDisabled;
-  // React updates `form` before the radio's special `name`/`checked` update.
-  // Rename before detaching, and reconnect before restoring the public name,
-  // so even an intermediate native group cannot uncheck unrelated radios.
-  // Initial state also supplies the correct server-rendered form association.
-  const [isFormExcluded, setIsFormExcluded] = useState(isDisabled);
+  const nativeName = isDisabled ? (disabledName ?? context.name) : context.name;
   const isChecked = context.value === value;
   // One predicate for both the rendered element and the aria-describedby that
   // points at it. A ReactNode description can be `false` or `''`, which render
@@ -311,12 +300,23 @@ export function RadioListItem({
     (radio: HTMLInputElement | null) => {
       radioRef.current = radio;
       if (radio) {
-        // The renamed host is committed before detaching it from its form.
-        // On re-enable, restore the form association before the public name.
-        setIsFormExcluded(isDisabled);
+        // Restore on attachment too: StrictMode can replay the ref without a
+        // host update. Render owns the final name and form, including SSR.
+        radio.name = nativeName;
+        return () => {
+          // React detaches the old ref before updating `form`, then commits
+          // `name`/`checked`. Release an enabled radio's public group before
+          // detaching from its form. Disabled radios already have a private
+          // name, so re-enable reconnects before restoring the public name.
+          // Both attributes finish before consumer parent effects can read them.
+          if (!isDisabled) {
+            radio.name = '';
+          }
+          radioRef.current = null;
+        };
       }
     },
-    [isDisabled],
+    [isDisabled, nativeName],
   );
 
   // Guard every accepted keyboard phase before the consumer can act. Keep the
@@ -350,18 +350,14 @@ export function RadioListItem({
         ref={setRadioRef}
         id={id}
         type="radio"
-        name={
-          isDisabled || isFormExcluded
-            ? (disabledName ?? context.name)
-            : context.name
-        }
+        name={nativeName}
         value={value}
         checked={isChecked}
         aria-disabled={isDisabled || undefined}
         // Detach disabled values from submission/validation without dropping
         // focus. Their private name keeps independent forms' same-name lists
         // distinct when all of these inputs have a null native form owner.
-        form={isFormExcluded ? '' : undefined}
+        form={isDisabled ? '' : undefined}
         data-radio-list-input=""
         data-radio-item-disabled={isItemDisabled ? '' : undefined}
         required={context.isRequired}

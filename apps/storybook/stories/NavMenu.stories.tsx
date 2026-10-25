@@ -2,7 +2,7 @@
 
 /**
  * @file NavMenu.stories.tsx
- * @input Nav-heading menu sizes, content, disabled destinations, and action callbacks
+ * @input Nav-heading menu sizes, content, disabled destinations, and click/keyboard callbacks
  * @output Menu examples, including disabled link and action rows in a heading popover
  * @position Storybook examples for NavHeadingMenu and NavHeadingMenuItem
  */
@@ -125,7 +125,7 @@ export const DisabledItems: Story = {
     docs: {
       description: {
         story:
-          'Open the heading menu to try disabled link and action items. Admin does not invoke selection, click-capture, or auxiliary-click callbacks. Disabled rows keep tabIndex=-1 and remain skipped by arrow navigation.',
+          'Open the heading menu to try disabled link and action items. Admin does not invoke selection, click-capture, auxiliary-click, or Enter/Space keyboard callbacks. Disabled rows keep tabIndex=-1 and remain skipped by arrow navigation.',
       },
     },
   },
@@ -155,6 +155,12 @@ export const DisabledItems: Story = {
           onClick={fn()}
           onClickCapture={fn()}
           onAuxClick={fn()}
+          onKeyDownCapture={fn()}
+          onKeyDown={fn()}
+          onKeyPressCapture={fn()}
+          onKeyPress={fn()}
+          onKeyUpCapture={fn()}
+          onKeyUp={fn()}
         />
       </>
     ),

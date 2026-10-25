@@ -3,7 +3,7 @@
 /**
  * @file NavMenu.doc.mjs
  * @input Public NavHeadingMenu composition and item interaction behavior
- * @output Consumer guidance for disabled navigation, action callbacks, and focus
+ * @output Consumer guidance for disabled navigation, click/activation-key callbacks, and focus
  * @position Shipped NavHeadingMenu documentation
  */
 
@@ -60,7 +60,7 @@ export const docs = {
       'NavHeadingMenuItem renders individual selectable items. ' +
       'Pass as the menu prop of SideNavHeading or TopNavHeading. ' +
       'Disabled items keep their focus owner and tabIndex=-1 without navigating or invoking selection, click-capture, auxiliary-click, or double-click callbacks on the item. ' +
-      'On action rows, focus and hover observation events remain available, and caller-rendered label content keeps its own event behavior. ' +
+      'Disabled action rows also withhold Enter/Space from item keydown, keypress, and keyup callbacks in capture and bubble phases; other keys, focus/hover observation, parent menu events, and caller-rendered label events remain available. ' +
       'Arrow navigation and typeahead continue to skip disabled items. ' +
       'Use aria-describedby on NavHeadingMenuItem to connect an explanation.',
   },
@@ -93,7 +93,7 @@ export const docsDense = {
   usage: {
     anatomy,
     description:
-      'Accessible menu container + items for nav heading popovers. NavHeadingMenu provides role="menu" w/ keyboard navigation; NavHeadingMenuItem renders individual selectable items. Pass as menu prop of SideNavHeading or TopNavHeading. Disabled items retain focus + tabIndex=-1, block navigation and item selection/click-capture/auxiliary-click/double-click callbacks, and stay skipped by arrows/typeahead. Action rows preserve focus/hover observation and caller-rendered label events. Connect explanations via item aria-describedby.',
+      'Accessible menu container + items for nav heading popovers. NavHeadingMenu provides role="menu" w/ keyboard navigation; NavHeadingMenuItem renders individual selectable items. Pass as menu prop of SideNavHeading or TopNavHeading. Disabled items retain focus + tabIndex=-1, block navigation and item selection/click-capture/auxiliary-click/double-click callbacks, and stay skipped by arrows/typeahead. Disabled action rows withhold Enter/Space from item keydown/keypress/keyup callbacks (capture + bubble), preserving other keys, focus/hover, parent menu events, and caller-rendered label events. Connect explanations via item aria-describedby.',
   },
   propDescriptions: {
     size: 'controls min-width + item padding',

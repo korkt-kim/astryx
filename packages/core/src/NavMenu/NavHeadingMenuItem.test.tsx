@@ -3,12 +3,16 @@
 /**
  * @file NavHeadingMenuItem.test.tsx
  * @input Public NavMenu exports and browser-like user interaction
- * @output Regression coverage for disabled navigation, action callbacks, and focus
+ * @output Regression coverage for disabled navigation, click/keyboard callbacks, and focus
  * @position Component-local tests for NavHeadingMenuItem
  */
 
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {createRef, type ComponentPropsWithRef} from 'react';
+import {
+  createRef,
+  type ComponentPropsWithRef,
+  type KeyboardEventHandler,
+} from 'react';
 import {renderToString} from 'react-dom/server';
 import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -299,6 +303,117 @@ describe('NavHeadingMenuItem disabled navigation', () => {
     expect(ref.current).toBeNull();
   });
 
+  it.each(['menu', 'standalone'] as const)(
+    'filters disabled action activation keys in every accepted phase (%s)',
+    async composition => {
+      const user = userEvent.setup();
+      const keys: string[] = [];
+      const parentKeys: string[] = [];
+      let mutations = 0;
+      const onClick = vi.fn();
+      const closeMenu = vi.fn();
+      const ref = createRef<HTMLElement>();
+      const record =
+        (phase: string): KeyboardEventHandler<HTMLElement> =>
+        event => {
+          keys.push(`${phase}:${event.key}`);
+          if (event.key === 'Enter' || event.key === ' ') {
+            mutations++;
+          }
+        };
+      const fixture = (isDisabled: boolean) => {
+        const item = (
+          <NavHeadingMenuItem
+            label="Action"
+            ref={ref}
+            isDisabled={isDisabled}
+            onClick={onClick}
+            onKeyDownCapture={record('capture-down')}
+            onKeyDown={record('down')}
+            onKeyPressCapture={record('capture-press')}
+            onKeyPress={record('press')}
+            onKeyUpCapture={record('capture-up')}
+            onKeyUp={record('up')}
+          />
+        );
+        return (
+          <NavHeadingCloseContext value={{closeMenu}}>
+            <div
+              onKeyDownCapture={event =>
+                parentKeys.push(`capture-down:${event.key}`)
+              }
+              onKeyDown={event => parentKeys.push(`down:${event.key}`)}
+              onKeyUpCapture={event =>
+                parentKeys.push(`capture-up:${event.key}`)
+              }
+              onKeyUp={event => parentKeys.push(`up:${event.key}`)}>
+              {composition === 'menu' ? (
+                <NavHeadingMenu>{item}</NavHeadingMenu>
+              ) : (
+                item
+              )}
+            </div>
+          </NavHeadingCloseContext>
+        );
+      };
+      const {rerender, unmount} = render(fixture(false));
+      const item = screen.getByRole('menuitem');
+      item.focus();
+      rerender(fixture(true));
+      for (const key of ['Enter', ' ']) {
+        keys.length = parentKeys.length = 0;
+        await user.keyboard(`{${key}}`);
+        expect(keys).toEqual([]);
+        expect(mutations).toBe(0);
+        expect(parentKeys).toEqual([
+          `capture-down:${key}`,
+          `down:${key}`,
+          `capture-up:${key}`,
+          `up:${key}`,
+        ]);
+        expect(onClick).not.toHaveBeenCalled();
+        expect(closeMenu).not.toHaveBeenCalled();
+        expect(ref.current).toBe(item);
+        expect(item).toHaveFocus();
+        expect(item).toHaveAttribute('tabindex', '-1');
+      }
+      if (composition === 'standalone') {
+        keys.length = 0;
+        await user.keyboard('a');
+        expect(keys).toEqual([
+          'capture-down:a',
+          'down:a',
+          'capture-press:a',
+          'press:a',
+          'capture-up:a',
+          'up:a',
+        ]);
+        expect(mutations).toBe(0);
+      }
+      rerender(fixture(false));
+      expect(ref.current).toBe(item);
+      expect(item).toHaveFocus();
+      for (const key of ['Enter', ' ']) {
+        keys.length = 0;
+        await user.keyboard(`{${key}}`);
+        expect(keys).toEqual([
+          `capture-down:${key}`,
+          `down:${key}`,
+          ...(composition === 'standalone'
+            ? [`capture-press:${key}`, `press:${key}`]
+            : []),
+          `capture-up:${key}`,
+          `up:${key}`,
+        ]);
+      }
+      expect(mutations).toBe(composition === 'menu' ? 8 : 12);
+      expect(onClick).toHaveBeenCalledTimes(composition === 'menu' ? 2 : 0);
+      expect(closeMenu).toHaveBeenCalledTimes(composition === 'menu' ? 2 : 0);
+      unmount();
+      expect(ref.current).toBeNull();
+    },
+  );
+
   it('preserves observation events and caller-rendered child activation on a disabled action', async () => {
     const user = userEvent.setup();
     const onFocus = vi.fn();
@@ -310,6 +425,8 @@ describe('NavHeadingMenuItem disabled navigation', () => {
     const onClickCapture = vi.fn();
     const childClick = vi.fn();
     const childAuxClick = vi.fn();
+    const childKeyDown = vi.fn();
+    const childKeyUp = vi.fn();
     const ancestorClick = vi.fn();
     render(
       <div onClick={ancestorClick}>
@@ -321,7 +438,9 @@ describe('NavHeadingMenuItem disabled navigation', () => {
               <a
                 href="#child-destination"
                 onClick={childClick}
-                onAuxClick={childAuxClick}>
+                onAuxClick={childAuxClick}
+                onKeyDown={childKeyDown}
+                onKeyUp={childKeyUp}>
                 Child destination
               </a>
             }
@@ -371,6 +490,53 @@ describe('NavHeadingMenuItem disabled navigation', () => {
     expect(ancestorClick).toHaveBeenCalledOnce();
     expect(onClick).not.toHaveBeenCalled();
     expect(onClickCapture).not.toHaveBeenCalled();
+    onKeyDown.mockClear();
+    child.focus();
+    await user.keyboard('{Enter}');
+    expect(childKeyDown).toHaveBeenCalledOnce();
+    expect(childKeyUp).toHaveBeenCalledOnce();
+    expect(childClick).toHaveBeenCalledTimes(2);
+    expect(ancestorClick).toHaveBeenCalledTimes(2);
+    expect(onKeyDown).not.toHaveBeenCalled();
+    expect(onClick).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(window.location.hash).toBe('#child-destination'),
+    );
+  });
+
+  it('preserves enabled keyboard cancellation in capture and bubble phases', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    const parentDown = vi.fn();
+    const parentUp = vi.fn();
+    const pressPrevented: boolean[] = [];
+    render(
+      <div onKeyDown={parentDown} onKeyUp={parentUp}>
+        <NavHeadingMenu>
+          <NavHeadingMenuItem
+            label="Menu action"
+            onClick={onClick}
+            onKeyDownCapture={event => event.stopPropagation()}
+          />
+        </NavHeadingMenu>
+        <NavHeadingMenuItem
+          label="Standalone action"
+          onKeyPressCapture={event => event.preventDefault()}
+          onKeyPress={event => pressPrevented.push(event.defaultPrevented)}
+          onKeyUp={event => event.stopPropagation()}
+        />
+      </div>,
+    );
+    screen.getByRole('menuitem', {name: 'Menu action'}).focus();
+    await user.keyboard('{Enter}');
+    expect(onClick).not.toHaveBeenCalled();
+    expect(parentDown).not.toHaveBeenCalled();
+    parentUp.mockClear();
+    screen.getByRole('menuitem', {name: 'Standalone action'}).focus();
+    await user.keyboard('{Enter}{ }');
+    expect(pressPrevented).toEqual([true, true]);
+    expect(parentUp).not.toHaveBeenCalled();
+    expect(parentDown).toHaveBeenCalledTimes(2);
   });
 
   it('preserves enabled capture composition and consumer cancellation', () => {

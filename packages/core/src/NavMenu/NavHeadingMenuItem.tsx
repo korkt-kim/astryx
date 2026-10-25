@@ -5,7 +5,7 @@
 /**
  * @file NavHeadingMenuItem.tsx
  * @input Uses React, StyleX, Icon, Text, NavMenuContext, and the disabled-link boundary
- * @output NavHeadingMenuItem and props; disabled rows retain focus and suppress activation
+ * @output NavHeadingMenuItem and props; disabled rows retain focus and guard click/activation-key callbacks
  * @position Core implementation; consumed by index.ts
  *
  * SYNC: When modified, update:
@@ -148,6 +148,21 @@ export function NavHeadingMenuItem({
   const LinkComponent = useLinkComponent();
   const Element = href ? LinkComponent : 'div';
 
+  // The link boundary owns href items. Filter only this action's consumers,
+  // leaving nonactivation keys, parent routing, and child-owned events intact.
+  const guardActionKeyCallback = (
+    handler: React.KeyboardEventHandler<HTMLElement> | undefined,
+  ): React.KeyboardEventHandler<HTMLElement> | undefined => {
+    if (href || !isDisabled || !handler) {
+      return handler;
+    }
+    return event => {
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        handler(event);
+      }
+    };
+  };
+
   return (
     <Element
       {...restProps}
@@ -166,6 +181,12 @@ export function NavHeadingMenuItem({
       onDoubleClickCapture={
         isDisabled ? undefined : restProps.onDoubleClickCapture
       }
+      onKeyDownCapture={guardActionKeyCallback(restProps.onKeyDownCapture)}
+      onKeyDown={guardActionKeyCallback(restProps.onKeyDown)}
+      onKeyPressCapture={guardActionKeyCallback(restProps.onKeyPressCapture)}
+      onKeyPress={guardActionKeyCallback(restProps.onKeyPress)}
+      onKeyUpCapture={guardActionKeyCallback(restProps.onKeyUpCapture)}
+      onKeyUp={guardActionKeyCallback(restProps.onKeyUp)}
       data-testid={testId}
       {...mergeProps(
         themeProps('nav-heading-menu-item', {size}),

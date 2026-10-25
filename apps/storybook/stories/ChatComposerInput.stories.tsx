@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file ChatComposerInput.stories.tsx
+ * @input ChatComposerInput and its public props and imperative handle
+ * @output Interactive editor examples, including disabled focus retention
+ * @position Storybook coverage for rich composer editing
+ */
+
 import type {Meta, StoryObj} from '@storybook/react';
 import {
   ChatComposer,
@@ -171,6 +178,61 @@ export const Disabled: Story = {
       input={<ChatComposerInput isDisabled placeholder="Input is disabled" />}
     />
   ),
+};
+
+function DisabledFocusExample() {
+  const [isDisabled, setIsDisabled] = useState(false);
+  const [submitted, setSubmitted] = useState(0);
+  return (
+    <div>
+      <button type="button" onClick={() => setIsDisabled(false)}>
+        Enable input
+      </button>
+      <p id="disabled-focus-reason">
+        Press F8 in the editor to disable sending.
+      </p>
+      <ChatComposer
+        isDisabled={isDisabled}
+        onSubmit={() => setSubmitted(count => count + 1)}
+        input={
+          <ChatComposerInput
+            value="Draft"
+            aria-describedby="disabled-focus-reason"
+            onKeyDown={event => {
+              if (event.key === 'F8') {
+                setIsDisabled(true);
+              }
+            }}
+          />
+        }
+      />
+      <p data-testid="submitted-count">Submitted: {submitted}</p>
+    </div>
+  );
+}
+
+/** Disable the focused editor without moving or losing its Tab stop. */
+export const DisabledFocus: Story = {
+  render: () => <DisabledFocusExample />,
+  play: async ({canvasElement}) => {
+    const canvas = within(canvasElement);
+    const editor = canvas.getByRole('textbox');
+    await userEvent.click(editor);
+    await userEvent.keyboard('{F8}');
+    await expect(editor).toHaveFocus();
+    await expect(editor).toHaveAttribute('aria-disabled', 'true');
+    await expect(editor).toHaveAccessibleDescription(
+      'Press F8 in the editor to disable sending.',
+    );
+    await userEvent.keyboard('{Enter}');
+    await expect(editor).toHaveTextContent('Draft');
+    await expect(canvas.getByTestId('submitted-count')).toHaveTextContent(
+      'Submitted: 0',
+    );
+    canvas.getByRole('button', {name: 'Enable input'}).focus();
+    await userEvent.tab();
+    await expect(editor).toHaveFocus();
+  },
 };
 
 /**

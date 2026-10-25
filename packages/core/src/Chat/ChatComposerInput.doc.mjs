@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file ChatComposerInput.doc.mjs
+ * @input ChatComposerInput public props and imperative handle
+ * @output Consumer guidance for rich editing and focusable disabled state
+ * @position ChatComposerInput documentation consumed by the CLI
+ */
+
 /** @type {import('@astryxdesign/cli/authoring').ComponentDoc} */
 
 export const docs = {
@@ -67,7 +74,7 @@ export const docs = {
       name: 'handleRef',
       type: 'React.Ref<ChatComposerInputHandle>',
       description:
-        'Imperative handle for programmatic control: insertToken, expandToken, insertText, focus, and getValue.',
+        'Imperative handle for programmatic control: insertToken, expandToken, insertText, focus, and getValue. Mutation methods do nothing while disabled; focus and getValue remain available.',
     },
     {
       name: 'value',
@@ -124,7 +131,7 @@ export const docs = {
       name: 'isDisabled',
       type: 'boolean',
       description:
-        'Disables the input. Use during streaming or when a prerequisite is unmet.',
+        'Blocks editing, history recall, trigger selection, paste/drop, imperative mutations, and submission without removing the editor from Tab order or losing existing focus. Controlled value updates still apply. Pass aria-describedby to connect a disabled reason to the editor.',
       default: 'false',
     },
     {
@@ -155,7 +162,7 @@ export const docs = {
       name: 'onKeyDown',
       type: '(event) => void',
       description:
-        'Key-down handler invoked before the built-in Enter/history behavior (after any open trigger menu). The seam for platform-specific keys: call event.preventDefault() to suppress the default submit (e.g. newline on a touch keyboard), or act on the event yourself to add behavior (e.g. submit on Cmd/Ctrl+Enter). IME composition is always respected; Enter never submits mid-composition.',
+        'Key-down handler invoked while enabled before the built-in Enter/history behavior (after any open trigger menu). The seam for platform-specific keys: call event.preventDefault() to suppress the default submit (e.g. newline on a touch keyboard), or act on the event yourself to add behavior (e.g. submit on Cmd/Ctrl+Enter). IME composition is always respected; Enter never submits mid-composition.',
     },
   ],
 };
@@ -168,7 +175,7 @@ export const docsZh = {
     '聊天编写器的富文本输入。支持触发菜单（输入 @ 或 / 打开 typeahead）、内联标记徽章、ArrowUp/Down 消息历史回溯、粘贴/拖放文件处理，并在 iOS 上将字体大小保持至少 16px 以避免输入缩放。当需要普通文本区域以外的功能时，传入 ChatComposer 的 input 插槽。',
   propDescriptions: {
     handleRef:
-      '命令式句柄，用于编程式控制：insertToken、expandToken、insertText、focus 和 getValue。',
+      '命令式句柄：insertToken、expandToken、insertText、focus 和 getValue。禁用时修改方法无效；focus 和 getValue 仍可使用。',
     value: '受控输入值。与 onChange 配对实现双向绑定。',
     onChange: '输入值变更时调用。序列化字符串包含标记占位符。',
     placeholder: '输入为空时显示的占位文本。',
@@ -178,7 +185,8 @@ export const docsZh = {
     debounceMs: '异步搜索源的去抖动延迟，避免过多网络请求。',
     hasHistory: '启用 ArrowUp/Down 回溯之前提交的消息。',
     label: '屏幕阅读器播报的无障碍标签。',
-    isDisabled: '禁用输入。在流式输出期间或前置条件未满足时使用。',
+    isDisabled:
+      '阻止编辑、历史回溯、触发选择、粘贴/拖放、命令式修改和提交，同时保留焦点和 Tab 顺序。受控 value 更新仍生效。可通过 aria-describedby 将禁用原因关联到编辑器。',
     onPaste:
       '粘贴纯文本时调用。自行处理后返回 true；否则由 ChatComposerInput 插入文本或应用粘贴转标记行为。',
     pasteAsToken:
@@ -186,7 +194,7 @@ export const docsZh = {
     onFiles: '粘贴或拖放文件到输入时调用。用于处理附件。',
     onSubmit: '用户不按 Shift 按 Enter 时调用。序列化值包含标记占位符。',
     onKeyDown:
-      '在内置 Enter/历史处理之前（在打开的触发菜单之后）调用的按键处理器。平台特定按键的接缝：调用 event.preventDefault() 可抑制默认提交（例如触控键盘上插入换行），或自行处理事件以添加行为（例如 Cmd/Ctrl+Enter 提交）。始终尊重输入法组字状态——组字过程中 Enter 永不提交。',
+      '仅启用时在内置 Enter/历史处理之前（在打开的触发菜单之后）调用的按键处理器。平台特定按键的接缝：调用 event.preventDefault() 可抑制默认提交（例如触控键盘上插入换行），或自行处理事件以添加行为（例如 Cmd/Ctrl+Enter 提交）。始终尊重输入法组字状态——组字过程中 Enter 永不提交。',
   },
 };
 
@@ -198,7 +206,7 @@ export const docsDense = {
     'rich input for composer; trigger menus (@/commands), inline tokens, msg history, paste/drop files, 16px iOS font-size floor to prevent zoom. Use in ChatComposer input slot when you need more than plain textarea.',
   propDescriptions: {
     handleRef:
-      'imperative handle (insertToken/expandToken/insertText/focus/getValue)',
+      'imperative handle; insertToken/expandToken/insertText no-op when disabled; focus/getValue stay available',
     value: 'controlled value; pair w/ onChange for two-way binding',
     onChange:
       'value change handler; serialized string includes token placeholders',
@@ -209,7 +217,8 @@ export const docsDense = {
     debounceMs: 'debounce for async search to avoid excess requests',
     hasHistory: 'ArrowUp/Down to recall previous submissions',
     label: 'a11y label for screen readers',
-    isDisabled: 'disabled; use during streaming or unmet prereqs',
+    isDisabled:
+      'focusable + inert; retains focus/Tab, blocks edits/history/triggers/paste/drop/imperative mutations/submit; controlled updates still apply; aria-describedby connects reason',
     onPaste:
       'plain-text paste callback; return true when handled, otherwise built-in token/plain insertion runs',
     pasteAsToken:
@@ -218,6 +227,6 @@ export const docsDense = {
     onSubmit:
       'Enter w/o Shift handler; serialized value includes token placeholders',
     onKeyDown:
-      'keydown handler before built-in Enter/history (after trigger menu); preventDefault() to suppress default submit (touch newline) or act on event to add behavior (Cmd/Ctrl+Enter). IME composition always respected',
+      'enabled-only keydown handler before built-in Enter/history (after trigger menu); preventDefault() to suppress default submit (touch newline) or act on event to add behavior (Cmd/Ctrl+Enter). IME composition always respected',
   },
 };

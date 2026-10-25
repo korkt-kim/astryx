@@ -448,6 +448,43 @@ export const DisabledWithMessage: Story = {
   },
 };
 
+// Separate forms can reuse htmlName, including while both groups are disabled.
+export const IndependentFormGroups: Story = {
+  args: {isDisabled: true},
+  render: ({isDisabled}) => {
+    const [first, setFirst] = useState('email');
+    const [second, setSecond] = useState('sms');
+    return (
+      <>
+        <form>
+          <RadioList
+            label="First delivery"
+            htmlName="delivery"
+            value={first}
+            onChange={setFirst}
+            isDisabled={isDisabled}
+            isRequired>
+            <RadioListItem label="Email" value="email" />
+            <RadioListItem label="SMS" value="sms" />
+          </RadioList>
+        </form>
+        <form>
+          <RadioList
+            label="Second delivery"
+            htmlName="delivery"
+            value={second}
+            onChange={setSecond}
+            isDisabled={isDisabled}
+            isRequired>
+            <RadioListItem label="Email" value="email" />
+            <RadioListItem label="SMS" value="sms" />
+          </RadioList>
+        </form>
+      </>
+    );
+  },
+};
+
 export const PressedState: Story = {
   name: 'Pressed state',
   parameters: {

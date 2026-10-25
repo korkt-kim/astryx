@@ -54,7 +54,7 @@ export const docs = {
       name: 'isDisabled',
       type: 'boolean',
       description:
-        'Disables this option without removing its existing focus or Tab eligibility. Exposes aria-disabled, blocks selection, onClick, and onClickCapture, and excludes its value from form submission. Focus and keyboard observers and independent controls in content slots keep their behavior. Individual disabled options are skipped by arrow selection.',
+        'Disables this option without removing its existing focus or Tab eligibility. Exposes aria-disabled, blocks selection, onClick, onClickCapture, and member Space/Enter callbacks on the radio in every keydown, keypress, and keyup phase, and excludes its value from form submission. Focus/blur, nonactivation keys, group keyboard observers, and independent controls in content slots keep their behavior. Individual disabled options are skipped by arrow selection.',
       default: 'false',
     },
     {
@@ -166,7 +166,7 @@ export const docsDense = {
     value: 'Value of this radio item.',
     description: 'Secondary content below label. String or ReactNode.',
     isDisabled:
-      'Blocks selection, onClick/onClickCapture and form submission; retains focus/Tab eligibility, focus/keyboard observers and independent slot controls. Arrow selection skips individual disabled options.',
+      'Blocks selection, click callbacks, and all member Space/Enter key phases on the radio; excludes form submission. Retains focus/Tab, focus/blur, nonactivation keys, group observers and independent slot controls. Arrows skip individual disabled options.',
     startContent: 'Content rendered before radio circle.',
     endContent: 'Content rendered after label.',
   },

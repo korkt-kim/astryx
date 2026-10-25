@@ -4,7 +4,8 @@
 
 /**
  * @file RadioListItem.tsx
- * @input Uses React use, useId, useRef, RadioListContext, Item
+ * @input Uses React use, useCallback, useId, useRef, useState, RadioListContext, Item
+ * @input Guards owned-radio activation-key callbacks; consumes the private disabled native name
  * @output Exports RadioListItem component, RadioListItemProps
  * @position Core implementation; consumed by index.ts, tested by RadioList.test.tsx
  *
@@ -18,11 +19,19 @@
  * - /packages/cli/assets/templates/blocks/components/RadioList/ (showcase blocks)
  */
 
-import React, {use, useId, useRef, type ReactNode} from 'react';
+import React, {
+  use,
+  useCallback,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type {StyleXStyles} from '@stylexjs/stylex';
 import type {BaseProps} from '../BaseProps';
 import {RadioListContext} from './RadioList';
+import {RadioListNativeNameContext} from './RadioListNativeNameContext';
 import {colorVars, radiusVars} from '../theme/tokens.stylex';
 import {mergeProps, isRenderable, rtlStyles} from '../utils';
 import {indicatorScope} from '../Indicator/indicator.markers.stylex';
@@ -246,6 +255,12 @@ export function RadioListItem({
   style,
   onClick,
   onClickCapture,
+  onKeyDown,
+  onKeyDownCapture,
+  onKeyPress,
+  onKeyPressCapture,
+  onKeyUp,
+  onKeyUpCapture,
   ...rest
 }: RadioListItemProps) {
   // Item marks itself as a pressable surface (the row delegates to the radio,
@@ -254,6 +269,7 @@ export function RadioListItem({
   // the touch press controller (pressableCoverage.test.ts).
   const pressable = usePressFeedback();
   const context = use(RadioListContext);
+  const disabledName = use(RadioListNativeNameContext);
   if (!context) {
     throw new Error('RadioListItem must be used within an RadioList');
   }
@@ -262,6 +278,11 @@ export function RadioListItem({
   const labelID = useId();
   const descriptionID = useId();
   const isDisabled = context.isDisabled || isItemDisabled;
+  // React updates `form` before the radio's special `name`/`checked` update.
+  // Rename before detaching, and reconnect before restoring the public name,
+  // so even an intermediate native group cannot uncheck unrelated radios.
+  // Initial state also supplies the correct server-rendered form association.
+  const [isFormExcluded, setIsFormExcluded] = useState(isDisabled);
   const isChecked = context.value === value;
   // One predicate for both the rendered element and the aria-describedby that
   // points at it. A ReactNode description can be `false` or `''`, which render
@@ -286,6 +307,36 @@ export function RadioListItem({
   // since the visible label is now a plain (non-`<label>`) text node — a real
   // `<label htmlFor>` would double-fire under delegation.
   const radioRef = useRef<HTMLInputElement>(null);
+  const setRadioRef = useCallback(
+    (radio: HTMLInputElement | null) => {
+      radioRef.current = radio;
+      if (radio) {
+        // The renamed host is committed before detaching it from its form.
+        // On re-enable, restore the form association before the public name.
+        setIsFormExcluded(isDisabled);
+      }
+    },
+    [isDisabled],
+  );
+
+  // Guard every accepted keyboard phase before the consumer can act. Keep the
+  // event itself intact for group observers and independent caller children.
+  const guardActivationKeys = (
+    handler: React.KeyboardEventHandler<HTMLDivElement> | undefined,
+  ): React.KeyboardEventHandler<HTMLDivElement> | undefined => {
+    if (!handler || !isDisabled) {
+      return handler;
+    }
+    return event => {
+      if (
+        event.target === radioRef.current &&
+        (event.key === ' ' || event.key === 'Enter')
+      ) {
+        return;
+      }
+      handler(event);
+    };
+  };
 
   const radioCircle = (
     <div
@@ -296,16 +347,21 @@ export function RadioListItem({
       )}
       {...focusProps}>
       <input
-        ref={radioRef}
+        ref={setRadioRef}
         id={id}
         type="radio"
-        name={context.name}
+        name={
+          isDisabled || isFormExcluded
+            ? (disabledName ?? context.name)
+            : context.name
+        }
         value={value}
         checked={isChecked}
         aria-disabled={isDisabled || undefined}
-        // Keep the native name for radio grouping, but detach disabled values
-        // from submission and constraint validation without dropping focus.
-        form={isDisabled ? '' : undefined}
+        // Detach disabled values from submission/validation without dropping
+        // focus. Their private name keeps independent forms' same-name lists
+        // distinct when all of these inputs have a null native form owner.
+        form={isFormExcluded ? '' : undefined}
         data-radio-list-input=""
         data-radio-item-disabled={isItemDisabled ? '' : undefined}
         required={context.isRequired}
@@ -376,6 +432,12 @@ export function RadioListItem({
       // Capture runs before the input's bubble guard. Guard only this accepted
       // callback; do not cancel events belonging to independent slot controls.
       onClickCapture={isDisabled ? undefined : onClickCapture}
+      onKeyDown={guardActivationKeys(onKeyDown)}
+      onKeyDownCapture={guardActivationKeys(onKeyDownCapture)}
+      onKeyPress={guardActivationKeys(onKeyPress)}
+      onKeyPressCapture={guardActivationKeys(onKeyPressCapture)}
+      onKeyUp={guardActivationKeys(onKeyUp)}
+      onKeyUpCapture={guardActivationKeys(onKeyUpCapture)}
       label={<span id={labelID}>{label}</span>}
       description={
         hasDescription ? (

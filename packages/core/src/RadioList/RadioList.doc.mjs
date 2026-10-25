@@ -104,7 +104,7 @@ export const docs = {
       name: 'htmlName',
       type: 'string',
       description:
-        'The HTML name attribute shared by the radio inputs, useful for form submissions. When omitted, a unique internal name still groups the radios.',
+        'The HTML name used by enabled radios and form submissions. Separate forms may reuse this name. Disabled radios use a private group name while excluded from the form, preserving each list’s checked value. When omitted, a unique internal name groups enabled radios.',
     },
     {
       name: 'disabledMessage',
@@ -156,12 +156,14 @@ export const docs = {
     {
       name: 'containerClassName',
       type: 'string',
-      description: 'Class name for the field container. Same targeting as `containerXstyle`.',
+      description:
+        'Class name for the field container. Same targeting as `containerXstyle`.',
     },
     {
       name: 'containerStyle',
       type: 'CSSProperties',
-      description: 'Inline styles for the field container. Same targeting as `containerXstyle`.',
+      description:
+        'Inline styles for the field container. Same targeting as `containerXstyle`.',
     },
     {
       name: 'controlXstyle',

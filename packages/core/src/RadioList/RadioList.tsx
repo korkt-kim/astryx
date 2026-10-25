@@ -5,6 +5,7 @@
 /**
  * @file RadioList.tsx
  * @input Uses React useId, useCallback, useRef, layer-scoped context, ReactNode, Field, InputStatus
+ * @input Shares a private disabled native name; synchronizes split native groups by form owner and name
  * @output Exports RadioList component, RadioListProps, RadioListContext
  * @position Core implementation; consumed by index.ts, tested by RadioList.test.tsx
  *
@@ -40,6 +41,7 @@ import {
 } from '../Field/fieldParts';
 import type {SizeValue} from '../utils/types';
 import {themeProps} from '../utils/themeProps';
+import {RadioListNativeNameContext} from './RadioListNativeNameContext';
 
 /**
  * Size of the radio controls, matching CheckboxInput sizes.
@@ -127,9 +129,9 @@ export interface RadioListProps extends Omit<
   isDisabled?: boolean;
 
   /**
-   * The HTML name attribute shared by the radio inputs in the group.
-   * Useful for form submissions; when omitted, a unique internal name is
-   * generated so the group still roves correctly.
+   * The HTML name attribute used by enabled radio inputs and form submissions.
+   * Disabled members use a private group name while excluded from the form.
+   * When omitted, a unique internal name groups the enabled radios.
    */
   htmlName?: string;
   /**
@@ -287,7 +289,7 @@ export function RadioList({
     ],
   );
 
-  // A disabled member has no form owner, unlike its enabled siblings. Repair
+  // Disabled members have a private native name and no form owner. Repair
   // that split only while the checked radio can own the group's Tab stop.
   // Otherwise let native grouping choose an eligible entry, including when a
   // caller hides or inerts the checked row. Unselected individual-disabled
@@ -310,7 +312,10 @@ export function RadioList({
         radio => !radio.hasAttribute('data-radio-item-disabled'),
       );
       let tabStop =
-        checked && radios.some(radio => radio.form !== checked.form)
+        checked &&
+        radios.some(
+          radio => radio.form !== checked.form || radio.name !== checked.name,
+        )
           ? checked
           : undefined;
       if (tabStop) {
@@ -336,9 +341,12 @@ export function RadioList({
       for (const radio of radios) {
         // Native required groups count a checked disabled member even though
         // its value is not submitted. Do not make enabled siblings invalidate
-        // the form just because that checked member now has no form owner.
+        // the form just because that checked member is in a different native
+        // group. Visibility/inertness affects entry, not checked participation.
         radio.required =
-          isRequired && (!checked || checked.form === radio.form);
+          isRequired &&
+          (!checked ||
+            (checked.form === radio.form && checked.name === radio.name));
         radio.tabIndex = tabStop
           ? radio === tabStop
             ? 0
@@ -360,6 +368,8 @@ export function RadioList({
       attributes: true,
       attributeFilter: [
         'checked',
+        'name',
+        'form',
         'data-radio-item-disabled',
         'class',
         'style',
@@ -389,14 +399,10 @@ export function RadioList({
     }
     const radios = Array.from(
       group.querySelectorAll<HTMLInputElement>('input[data-radio-list-input]'),
-    ).filter(
-      radio =>
-        radio.name === target.name &&
-        radio.closest('[role="radiogroup"]') === group,
-    );
+    ).filter(radio => radio.closest('[role="radiogroup"]') === group);
     // Native arrows still own ordinary groups, including whole-group disabled
-    // discovery. Only individual disablement needs help: without a containing
-    // form, detaching a disabled radio does not separate its native group.
+    // discovery. The individual-disabled fallback spans the list's native
+    // name/form split so a focused disabled member can reach enabled peers.
     if (
       target.form ||
       !radios.some(radio => radio.hasAttribute('data-radio-item-disabled'))
@@ -576,7 +582,11 @@ export function RadioList({
           controlClassName,
           controlStyle,
         )}>
-        <RadioListContext value={contextValue}>{children}</RadioListContext>
+        <RadioListContext value={contextValue}>
+          <RadioListNativeNameContext value={`${autoName}-disabled`}>
+            {children}
+          </RadioListNativeNameContext>
+        </RadioListContext>
       </div>
       {showsDisabledMessage &&
         disabledMessageTooltip.renderTooltip(disabledMessage)}

@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file Link.doc.mjs
+ * @input Link props and the shared native/custom navigation boundary
+ * @output Consumer guidance for navigation, disabled focus, and router adapters
+ * @position Shipped Link documentation
+ */
+
 /** @type {import('@astryxdesign/cli/authoring').ComponentDoc} */
 
 export const docs = {
@@ -28,7 +35,7 @@ export const docs = {
         {
           name: 'as',
           type: 'LinkComponentType',
-          description: 'Custom component to render instead of <a>',
+          description: 'Custom component to render instead of <a>. Forward the DOM ref and supplied DOM event handlers to the anchor so disabled focus and navigation guards remain effective.',
         },
         {
           name: 'label',
@@ -50,7 +57,7 @@ export const docs = {
         {
           name: 'isDisabled',
           type: 'boolean',
-          description: 'Disables the link',
+          description: 'Prevents activation and navigation while retaining focus, the link role, and the existing tab order (including an explicit tabIndex of -1). Exposes aria-disabled; use aria-describedby to associate an unavailable reason. Initially disabled links do not invoke a custom router; a router mounted while enabled stays mounted on disablement.',
           default: 'false',
         },
         {
@@ -214,7 +221,7 @@ export const docsZh = {
         {
           name: 'as',
           type: 'LinkComponentType',
-          description: '用于替代 <a> 渲染的自定义组件',
+          description: '用于替代 <a> 渲染的自定义组件；请将 DOM ref 和传入的 DOM 事件处理器转发到锚点，以保留禁用时的焦点和导航保护。',
         },
         {
           name: 'label',
@@ -235,7 +242,7 @@ export const docsZh = {
         {
           name: 'isDisabled',
           type: 'boolean',
-          description: '禁用链接',
+          description: '禁止激活和导航，同时保留焦点、链接角色及原有 Tab 顺序。通过 aria-disabled 暴露状态，并可用 aria-describedby 关联不可用原因。',
           default: 'false',
         },
         {
@@ -355,11 +362,11 @@ export const docsDense = {
       description:
         'Styled anchor link w/ variants, external link support, polymorphic rendering.',
       propDescriptions: {
-        as: 'Custom component to render instead of <a>',
+        as: 'Custom anchor renderer; forward the DOM ref and supplied DOM event handlers for disabled focus/navigation guards.',
         label: 'Accessible label (aria-label). Only for non-text content like icon-only links.',
         href: 'Link destination URL. Shared rule blocks javascript:, vbscript:, data:text/html after scheme normalization on every Astryx-owned navigation path. Ordinary URLs, fragments, safe custom schemes, and accepted downloads are preserved. Rejected => inert, no custom router. No bypass prop; exceptional caller-owned rendering is outside the guarantee. Image/resource policy is separate.',
         hasUnderline: 'Always show underline',
-        isDisabled: 'Disables link',
+        isDisabled: 'Blocks activation/navigation; keeps focus, role, tab eligibility and aria-describedby. aria-disabled is exposed. Initially disabled skips routers; a mounted router keeps its identity.',
         isExternalLink: 'Opens new tab w/ external icon and safe rel tokens',
         newTabLabel: 'SR text announcing an external link opens in a new tab',
         target:

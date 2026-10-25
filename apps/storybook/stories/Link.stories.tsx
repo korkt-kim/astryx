@@ -1,5 +1,13 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file Link.stories.tsx
+ * @input Public Link props and a controlled disabled transition
+ * @output Link appearance and keyboard focus examples
+ * @position Storybook; demonstrates navigation and disabled action semantics
+ */
+
+import {useState} from 'react';
 import type {Meta, StoryObj} from '@storybook/react';
 import {Link} from '@astryxdesign/core/Link';
 import {Text} from '@astryxdesign/core/Text';
@@ -96,6 +104,42 @@ export const Disabled: Story = {
     href: '/disabled',
     isDisabled: true,
     children: 'Disabled link',
+  },
+};
+
+function DisabledFocusExample() {
+  const [isDisabled, setIsDisabled] = useState(false);
+  return (
+    <Text>
+      <Link
+        href="#destination"
+        isDisabled={isDisabled}
+        aria-describedby="disabled-link-reason"
+        onClick={event => {
+          event.preventDefault();
+          setIsDisabled(true);
+        }}>
+        Activate to disable this link
+      </Link>{' '}
+      <span id="disabled-link-reason">
+        {isDisabled
+          ? 'This destination is temporarily unavailable.'
+          : 'Press Enter to keep focus while disabling.'}
+      </span>{' '}
+      <Link onClick={() => setIsDisabled(false)}>Enable again</Link>
+    </Text>
+  );
+}
+
+export const DisabledFocusTransition: Story = {
+  render: () => <DisabledFocusExample />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Tab to the first link and press Enter. It becomes disabled without losing focus or changing its link role; subsequent activation is blocked and the reason stays associated with it.',
+      },
+    },
   },
 };
 

@@ -4,8 +4,9 @@
 
 /**
  * @file Link.tsx
- * @input Uses React, AnchorHTMLAttributes, ReactNode
- * @output Exports Link component, LinkProps
+ * @input Uses React, link routing, and focusable disabled activation guards
+ * @output Exports Link component and LinkProps; preserves the focused link
+ *   through enabled/disabled transitions
  * @position Core implementation; consumed by index.ts, tested by Link.test.tsx
  *
  * SYNC: When modified, update these files to stay in sync:
@@ -174,9 +175,9 @@ export interface LinkProps extends BaseProps<
   hasUnderline?: boolean;
   /**
    * Whether the link is disabled.
-   * A disabled link renders as a plain anchor without an href (and without
-   * target/rel/onClick), so it cannot navigate or run onClick. It keeps a tab
-   * stop and is announced as a disabled link.
+   * A disabled link has no active destination and cannot activate. It keeps
+   * its focus, link role, and existing tab eligibility. Initially disabled
+   * links render without invoking a custom router.
    * @default false
    */
   isDisabled?: boolean;
@@ -306,6 +307,7 @@ export function Link({
   className,
   style,
   ref,
+  tabIndex,
   ...props
 }: LinkProps) {
   // Constant marker props; the hook's only effect is installing the shared
@@ -315,7 +317,8 @@ export function Link({
   const t = useTranslator();
   const newTabLabel = newTabLabelFromProps ?? t('@astryx.link.newTab');
   const LinkComponent = useLinkComponent(as);
-  const role = useInteractiveRole({href, onClick, isDisabled});
+  // Disabled changes operability, not the element type or semantic role.
+  const role = useInteractiveRole({href, onClick});
   // Determine target and rel based on isExternalLink
   const {target, rel} = computeTargetAndRel(
     isExternalLink ? '_blank' : targetFromProps,
@@ -354,6 +357,7 @@ export function Link({
       <button
         ref={ref as React.Ref<HTMLButtonElement>}
         type="button"
+        tabIndex={tabIndex}
         onClick={onClick}
         {...(isDisabled ? undefined : pressable)}
         aria-label={label || undefined}
@@ -381,50 +385,20 @@ export function Link({
         {sharedContent}
       </button>
     );
-  } else if (isDisabled) {
-    // A disabled link renders as an <a> with no href, so nothing can navigate
-    // and the consumer onClick never fires. It keeps a Tab stop and the link
-    // role so keyboard and screen-reader users still find it (spec:AST-085
-    // FR1, FR5). The router LinkComponent is deliberately skipped — a disabled
-    // link performs no navigation, and custom router links may require a live
-    // href. target/rel are omitted with the href.
-    linkElement = (
-      <a
-        ref={ref as React.Ref<HTMLAnchorElement>}
-        role="link"
-        aria-label={label || undefined}
-        aria-disabled={true}
-        tabIndex={0}
-        {...mergeProps(
-          themeProps('link', {color}),
-          focusOutlineProps.focusVisible(
-            styles.base,
-            linkColorStyles[color],
-            hasUnderline && styles.hasUnderline,
-            isStandalone && styles.standalone,
-            styles.disabled,
-            xstyle,
-          ),
-          className,
-          style,
-        )}
-        {...props}
-        {...disabledInteractionProps(props.onKeyDown)}>
-        {sharedContent}
-      </a>
-    );
   } else {
     linkElement = (
       <LinkComponent
         ref={ref as React.Ref<HTMLAnchorElement>}
         href={href}
+        _isDisabled={isDisabled}
+        role={isDisabled ? 'link' : undefined}
         target={target}
         rel={rel}
         onClick={onClick}
         {...(isDisabled ? undefined : pressable)}
         aria-label={label || undefined}
         aria-disabled={isDisabled || undefined}
-        tabIndex={isDisabled ? -1 : undefined}
+        tabIndex={tabIndex ?? (isDisabled ? 0 : undefined)}
         {...mergeProps(
           themeProps('link', {color}),
           focusOutlineProps.focusVisible(

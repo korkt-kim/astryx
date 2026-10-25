@@ -3,7 +3,7 @@
 /**
  * @file Link.test.tsx
  * @input Uses vitest, @testing-library/react, Link component
- * @output Unit tests for Link component behavior
+ * @output Unit tests for Link semantics, disabled rendering, and presentation
  * @position Testing; validates Link.tsx implementation
  *
  * SYNC: When Link.tsx changes, update tests to match new behavior
@@ -212,10 +212,9 @@ describe('Link', () => {
         Disabled Link
       </Link>,
     );
-    // With onClick present, a disabled Link renders as a disabled <button>
-    // (useInteractiveRole excludes a disabled href). Either way the rendered
-    // root must carry no live href and never invoke the consumer handler.
+    // Adding onClick does not change the disabled navigation control's role.
     const el = container.firstElementChild as HTMLElement;
+    expect(el).toBe(screen.getByRole('link', {name: 'Disabled Link'}));
     expect(el).not.toHaveAttribute('href');
     fireEvent.click(el);
     expect(handleClick).not.toHaveBeenCalled();
@@ -233,7 +232,7 @@ describe('Link', () => {
     expect(link).not.toHaveAttribute('rel');
   });
 
-  it('disabled link renders a plain anchor, not the custom LinkComponent', () => {
+  it('initially disabled link renders a plain anchor, not the custom LinkComponent', () => {
     render(
       <LinkProvider component={CustomLink}>
         <Link href="/custom" as={CustomLink} isDisabled>

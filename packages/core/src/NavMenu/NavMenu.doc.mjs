@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file NavMenu.doc.mjs
+ * @input Public NavHeadingMenu composition and item interaction behavior
+ * @output Consumer guidance for nav-heading menus and inert disabled items
+ * @position Shipped NavHeadingMenu documentation
+ */
+
 /** @type {import('@astryxdesign/cli/authoring').ComponentAnatomyElement[]} */
 const anatomy = [
   {
@@ -51,7 +58,10 @@ export const docs = {
       'Accessible menu container and items for nav heading popovers. ' +
       'NavHeadingMenu provides role="menu" with keyboard navigation; ' +
       'NavHeadingMenuItem renders individual selectable items. ' +
-      'Pass as the menu prop of SideNavHeading or TopNavHeading.',
+      'Pass as the menu prop of SideNavHeading or TopNavHeading. ' +
+      'Disabled items keep their focus owner and tabIndex=-1 without navigating or selecting. ' +
+      'Arrow navigation and typeahead continue to skip disabled items. ' +
+      'Use aria-describedby on NavHeadingMenuItem to connect an explanation.',
   },
   playground: {
     defaults: {
@@ -82,7 +92,7 @@ export const docsDense = {
   usage: {
     anatomy,
     description:
-      'Accessible menu container + items for nav heading popovers. NavHeadingMenu provides role="menu" w/ keyboard navigation; NavHeadingMenuItem renders individual selectable items. Pass as menu prop of SideNavHeading or TopNavHeading.',
+      'Accessible menu container + items for nav heading popovers. NavHeadingMenu provides role="menu" w/ keyboard navigation; NavHeadingMenuItem renders individual selectable items. Pass as menu prop of SideNavHeading or TopNavHeading. Disabled items retain focus + tabIndex=-1, block navigation/selection, and stay skipped by arrows/typeahead. Connect explanations via item aria-describedby.',
   },
   propDescriptions: {
     size: 'controls min-width + item padding',

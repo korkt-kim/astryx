@@ -4,12 +4,13 @@
 
 /**
  * @file NavHeadingMenuItem.tsx
- * @input Uses React, StyleX, Icon, Text, NavMenuContext, useLinkComponent
- * @output Exports NavHeadingMenuItem component and NavHeadingMenuItemProps type
+ * @input Uses React, StyleX, Icon, Text, NavMenuContext, and the disabled-link boundary
+ * @output NavHeadingMenuItem and props; disabled rows keep focus and block navigation
  * @position Core implementation; consumed by index.ts
  *
  * SYNC: When modified, update:
  * - /packages/core/src/NavMenu/index.ts
+ * - /packages/core/src/NavMenu/NavMenu.doc.mjs
  */
 
 import React, {useCallback, type ReactNode} from 'react';
@@ -108,7 +109,8 @@ export interface NavHeadingMenuItemProps extends Omit<
  *
  * Reads size from the parent NavHeadingMenu for consistent padding.
  * Automatically dismisses the menu on click via context.
- * Renders as a link when `href` is provided.
+ * Renders as a link when `href` is provided. Disabled items keep their focus
+ * owner and tabIndex=-1 while withholding navigation and selection.
  *
  * @example
  * ```
@@ -149,9 +151,10 @@ export function NavHeadingMenuItem({
   return (
     <Element
       {...restProps}
+      {...(href ? {_isDisabled: isDisabled} : {})}
       ref={ref}
       role="menuitem"
-      tabIndex={isDisabled ? undefined : -1}
+      tabIndex={-1}
       aria-disabled={isDisabled || undefined}
       href={href}
       onClick={handleClick}

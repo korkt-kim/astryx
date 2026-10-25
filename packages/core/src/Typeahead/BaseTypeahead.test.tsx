@@ -3,7 +3,7 @@
 /**
  * @file BaseTypeahead.test.tsx
  * @input BaseTypeahead public props, synchronous and asynchronous SearchSources
- * @output Combobox contracts, including disabled activation/transfer guards, inspection, and stale work
+ * @output Combobox contracts, including renewed enabled focus, disabled guards, inspection, and stale work
  * @position Colocated verification for BaseTypeahead
  */
 
@@ -223,6 +223,124 @@ describe('BaseTypeahead', () => {
       expect(input).toHaveFocus();
     },
   );
+
+  it('opens on renewed keyboard focus after disabled cached results were explicitly closed', async () => {
+    const user = userEvent.setup();
+    const ref = createRef<HTMLInputElement>();
+    const onChange = vi.fn();
+    const onOpenChange = vi.fn();
+    const onFocus = vi.fn();
+    const source: SearchSource<SearchableItem> = {
+      search: () => [],
+      bootstrap: () => [resultItem],
+    };
+    const field = (isDisabled: boolean) => (
+      <>
+        <button type="button">Before</button>
+        <BaseTypeahead
+          ref={ref}
+          searchSource={source}
+          value={resultItem}
+          onChange={onChange}
+          onOpenChange={onOpenChange}
+          onFocus={onFocus}
+          hasEntriesOnFocus
+          isDisabled={isDisabled}
+        />
+        <button type="button">After</button>
+      </>
+    );
+    const {rerender} = render(field(false));
+    await user.tab();
+    await user.tab();
+    const input = screen.getByRole('combobox');
+    expect(input).toHaveAttribute('aria-expanded', 'true');
+    await user.keyboard('{Escape}');
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    onOpenChange.mockClear();
+
+    rerender(field(true));
+    expect(input).toHaveFocus();
+    await user.keyboard('{ArrowDown}{Enter}');
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    expect(onChange).not.toHaveBeenCalled();
+    await user.tab();
+    expect(screen.getByRole('button', {name: 'After'})).toHaveFocus();
+    rerender(field(false));
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    await user.tab({shift: true});
+    expect(input).toHaveFocus();
+    expect(ref.current).toBe(input);
+    expect(input).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.getByRole('option', {name: 'Result', hidden: true}),
+    ).toBeInTheDocument();
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(true);
+    expect(onFocus).toHaveBeenCalledTimes(2);
+    expect(onChange).not.toHaveBeenCalled();
+
+    // Re-enabling is not itself a new focus intent, even with focus retained.
+    await user.keyboard('{Escape}');
+    onOpenChange.mockClear();
+    rerender(field(true));
+    rerender(field(false));
+    expect(input).toHaveFocus();
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it('keeps renewed-focus results when a pre-disable bootstrap resolves later', async () => {
+    const user = userEvent.setup();
+    let resolveOld!: (items: SearchableItem[]) => void;
+    const old = new Promise<SearchableItem[]>(resolve => {
+      resolveOld = resolve;
+    });
+    const freshItem = {id: 'fresh', label: 'Fresh result'};
+    const source: SearchSource<SearchableItem> = {
+      search: () => [],
+      bootstrap: vi.fn().mockReturnValueOnce(old).mockReturnValue([freshItem]),
+    };
+    const onOpenChange = vi.fn();
+    const onChange = vi.fn();
+    const field = (isDisabled: boolean) => (
+      <>
+        <BaseTypeahead
+          searchSource={source}
+          value={resultItem}
+          onChange={onChange}
+          onOpenChange={onOpenChange}
+          hasEntriesOnFocus
+          isDisabled={isDisabled}
+        />
+        <button type="button">After</button>
+      </>
+    );
+    const {rerender} = render(field(false));
+    await user.tab();
+    const input = screen.getByRole('combobox');
+    expect(input).toHaveAttribute('aria-busy', 'true');
+    rerender(field(true));
+    await user.tab();
+    rerender(field(false));
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    await user.tab({shift: true});
+    expect(input).toHaveFocus();
+    expect(input).toHaveAttribute('aria-expanded', 'true');
+    await act(async () => {
+      resolveOld([resultItem]);
+    });
+    expect(
+      screen.getByRole('option', {name: 'Fresh result', hidden: true}),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', {name: 'Result', hidden: true}),
+    ).not.toBeInTheDocument();
+    expect(input).not.toHaveAttribute('aria-busy');
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(true);
+    expect(onChange).not.toHaveBeenCalled();
+  });
 
   it('cancels a scheduled search when disabled and retains the query', async () => {
     const search = vi.fn(() => [resultItem]);

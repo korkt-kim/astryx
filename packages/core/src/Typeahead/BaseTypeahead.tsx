@@ -5,7 +5,7 @@
 /**
  * @file BaseTypeahead.tsx
  * @input Uses React, StyleX, usePopover, TypeaheadItem
- * @output Exports BaseTypeahead; disabled inputs keep focus/inspection and guard activation, paste/drop, or stale work
+ * @output Exports BaseTypeahead; disabled inputs reject changes and stale work; renewed enabled focus refreshes invalidated results
  * @position Core implementation; used by Typeahead and Tokenizer
  *
  * Pure combobox engine: input, search, keyboard navigation, dropdown.
@@ -691,6 +691,10 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
   if (disabledOfState !== isDisabled) {
     setDisabledOfState(isDisabled);
     if (isDisabled) {
+      // The generation below invalidates these cached results too. Discard
+      // them so a new enabled focus can bootstrap instead of finding a cache
+      // that is neither reusable nor considered missing.
+      setResults([]);
       setIsLoading(false);
       setHighlightedIndex(-1);
       setHasSearched(false);

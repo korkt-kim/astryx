@@ -3,7 +3,7 @@
 /**
  * @file DateInputTouch.test.tsx
  * @input Uses vitest, @testing-library/react, DateInput and its helpers
- * @output Behavior coverage for the responsive date picker
+ * @output Behavior coverage for the responsive date picker, including open-sheet disablement
  * @position Test file for /packages/core/src/DateInput/
  *
  * What jsdom can and cannot see here matters, and the split is deliberate:
@@ -29,6 +29,7 @@ import {
   afterEach,
 } from 'vitest';
 import {
+  act,
   render,
   screen,
   fireEvent,
@@ -275,6 +276,47 @@ function weekdayRow(): HTMLElement {
   }
   return row as HTMLElement;
 }
+
+describe('DateInput — open-sheet disablement', () => {
+  it.each(['select', 'reset'] as const)(
+    'blocks %s after the open sheet becomes disabled, retaining value and focus',
+    action => {
+      const onChange = vi.fn();
+      const changeAction = vi.fn();
+      const props = {initial: '2026-02-21' as const, onChange, changeAction};
+      withLayout(() => {
+        const {rerender} = render(<Controlled {...props} />);
+        fireEvent.click(field());
+        const target =
+          action === 'select'
+            ? within(pane('February 2026')).getByRole('button', {
+                name: /February 22, 2026/,
+              })
+            : screen.getByRole('button', {name: 'Reset'});
+        act(() => target.focus());
+        rerender(<Controlled {...props} isDisabled />);
+        expect(target).toHaveFocus();
+        fireEvent.click(target);
+
+        expect(onChange).not.toHaveBeenCalled();
+        expect(changeAction).not.toHaveBeenCalled();
+        expect(field()).toHaveValue('February 21, 2026');
+        expect(field()).toHaveAttribute('aria-expanded', 'true');
+        expect(target).toHaveFocus();
+        expect(
+          document.querySelector('[data-title="month-year"]'),
+        ).toHaveTextContent('February 2026');
+
+        rerender(<Controlled {...props} />);
+        fireEvent.click(target);
+        const next = action === 'select' ? '2026-02-22' : undefined;
+        expect(onChange).toHaveBeenCalledExactlyOnceWith(next);
+        expect(changeAction).toHaveBeenCalledExactlyOnceWith(next);
+        expect(field()).toHaveAttribute('aria-expanded', 'true');
+      });
+    },
+  );
+});
 
 // ---------------------------------------------------------------------------
 // Which surface, and why

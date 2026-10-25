@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file DateInput.doc.mjs
+ * @input DateInput's public field and picker contracts
+ * @output Consumer props, examples, and disabled-picker guidance
+ * @position Colocated DateInput consumer documentation
+ */
+
 /** @type {import('@astryxdesign/cli/authoring').ComponentDoc} */
 
 export const docs = {
@@ -50,7 +57,7 @@ export const docs = {
       name: 'isDisabled',
       type: 'boolean',
       description:
-        'Disable the input and calendar. The field stays focusable and exposes `aria-disabled`; typing and opening are blocked.',
+        'Disable the input and calendar. The field stays focusable and exposes `aria-disabled`; typing and opening are blocked. Selections and Reset from an already-open picker are ignored without dismissing it.',
       default: 'false',
     },
     {
@@ -412,7 +419,7 @@ export const docsZh = {
       name: 'isDisabled',
       type: 'boolean',
       description:
-        '禁用输入框和日历。输入框仍可聚焦并暴露 `aria-disabled`，但不能输入或打开日历。',
+        '禁用输入框和日历。输入框仍可聚焦并暴露 `aria-disabled`，但不能输入或打开日历。已打开的选择器不会关闭，其中的日期选择和重置操作均被忽略。',
       default: 'false',
     },
     {
@@ -649,7 +656,8 @@ export const docsDense = {
     description: 'helper text below label',
     isOptional: 'show "(optional)" indicator',
     isRequired: 'mark field required',
-    isDisabled: 'disable input+calendar',
+    isDisabled:
+      'focusable, inert input+calendar; open picker selections/reset ignored',
     disabledMessage:
       "reason shown in a tooltip on hover/focus when disabled; describes the field's focusable controls",
     value: 'selected date YYYY-MM-DD',

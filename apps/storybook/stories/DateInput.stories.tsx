@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file DateInput.stories.tsx
+ * @input DateInput props and controlled example values
+ * @output DateInput examples, including disabling an already-open picker
+ * @position Core DateInput Storybook stories
+ */
+
 import {useState} from 'react';
 import type {Meta, StoryObj} from '@storybook/react';
 import {expect, userEvent, waitFor, within} from 'storybook/test';
@@ -67,7 +74,8 @@ const meta: Meta<typeof DateInput> = {
     },
     isDisabled: {
       control: 'boolean',
-      description: 'Whether the input is disabled',
+      description:
+        'Whether the input is disabled. Open-picker selections and Reset are blocked too, without dismissing the picker.',
     },
     disabledMessage: {
       control: 'text',
@@ -306,6 +314,14 @@ export const Required: Story = {
 };
 
 export const Disabled: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'To try disablement while picking, turn isDisabled off in Controls, open the calendar, then turn it back on. The picker stays open, but selecting a date does not change the value. Re-enable it to resume picking.',
+      },
+    },
+  },
   render: args => {
     const [value, setValue] = useState<ISODateString | undefined>(
       '2026-01-25' as ISODateString,

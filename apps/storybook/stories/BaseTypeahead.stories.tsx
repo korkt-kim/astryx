@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file BaseTypeahead.stories.tsx
+ * @input BaseTypeahead public props and search sources
+ * @output Custom combobox examples, including focusable disabled inputs
+ * @position Storybook examples for the bare combobox engine
+ */
+
 import {useId, useRef, useState} from 'react';
 import type {Meta, StoryObj} from '@storybook/react';
 import {expect, userEvent, waitFor, within} from 'storybook/test';
@@ -233,10 +240,47 @@ export const CustomRenderer: Story = {
 export const DisabledStates: Story = {
   render: () => (
     <div {...stylex.props(styles.stage)}>
-      <Demo label="Native disabled" isDisabled />
-      <Demo label="Focusable disabled" isDisabled isFocusableDisabled />
+      <Demo label="Disabled" isDisabled hasEntriesOnFocus />
+      <Demo
+        label="Disabled with a reason"
+        isDisabled
+        hasEntriesOnFocus
+        aria-describedby="base-typeahead-disabled-reason"
+      />
+      <span id="base-typeahead-disabled-reason">Choose a workspace first.</span>
     </div>
   ),
+};
+
+export const DisableWhileOpen: Story = {
+  render: function Render() {
+    const [isDisabled, setIsDisabled] = useState(false);
+    return (
+      <Demo
+        hasEntriesOnFocus
+        isDisabled={isDisabled}
+        onKeyDown={event => {
+          // Disable without moving focus away from the open combobox.
+          if (event.key === 'F2') {
+            event.preventDefault();
+            setIsDisabled(true);
+          }
+        }}
+        label="Focus to open, then press F2 to disable"
+      />
+    );
+  },
+  play: async ({canvasElement}) => {
+    const input = within(canvasElement).getByRole('combobox');
+    await userEvent.click(input);
+    await waitFor(() => expect(input).toHaveAttribute('aria-expanded', 'true'));
+    await userEvent.keyboard('{ArrowDown}{F2}{Enter}');
+    await expect(input).toHaveFocus();
+    await expect(input).toHaveAttribute('aria-disabled', 'true');
+    await expect(input).not.toHaveAttribute('disabled');
+    await expect(input).toHaveAttribute('aria-expanded', 'false');
+    await expect(input).not.toHaveAttribute('aria-activedescendant');
+  },
 };
 
 export const SizeVariants: Story = {

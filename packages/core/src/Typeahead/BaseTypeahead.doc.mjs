@@ -168,14 +168,15 @@ export const docs = {
     {
       name: 'isDisabled',
       type: 'boolean',
-      description: 'Whether the input is disabled.',
+      description:
+        'Blocks editing, selection, and popup opening while preserving focus and the input’s existing Tab order. Becoming disabled cancels pending source work and closes the popup.',
       default: 'false',
     },
     {
       name: 'isFocusableDisabled',
       type: 'boolean',
       description:
-        'Keep a disabled input focusable with aria-disabled and readOnly so a caller-owned disabled reason remains discoverable. It blocks text entry, but when applied after results are already open, Enter can still select the highlighted option.',
+        'Accepted for compatibility; has no effect. Every disabled input stays focusable with aria-disabled and readOnly and blocks editing, selection, and popup opening.',
       default: 'false',
     },
     {
@@ -327,14 +328,15 @@ export const docsZh = {
     {
       name: 'isDisabled',
       type: 'boolean',
-      description: '输入框是否被禁用。',
+      description:
+        '阻止编辑、选择和打开弹出层，同时保留焦点和原有 Tab 顺序。禁用时取消待完成的搜索并关闭弹出层。',
       default: 'false',
     },
     {
       name: 'isFocusableDisabled',
       type: 'boolean',
       description:
-        '使用 aria-disabled 和只读状态保持禁用输入框可聚焦，以便访问调用方提供的禁用原因。它会阻止文本输入，但如果结果已打开，按 Enter 仍可选择高亮选项。',
+        '为兼容保留，不再影响行为。所有禁用输入框均通过 aria-disabled 和只读状态保持可聚焦，并阻止编辑、选择和打开弹出层。',
       default: 'false',
     },
     {
@@ -465,9 +467,10 @@ export const docsDense = {
     minQueryLength:
       'Min query length before searching. Menu stays closed below it.',
     emptySearchText: 'Content when the query matched nothing. ReactNode.',
-    isDisabled: 'Whether input disabled.',
+    isDisabled:
+      'Keeps focus/Tab order; blocks editing, selection and opening. Cancels pending source work and closes the popup.',
     isFocusableDisabled:
-      'Keeps disabled input focusable and blocks text entry; an already-open highlight can still be selected with Enter.',
+      'Compatibility only; no effect. Disabled inputs are always focusable and non-operable.',
     hasAutoFocus: 'Auto-focus on mount.',
     debounceMs: 'Search debounce ms. 0 for sync.',
     size: 'Dropdown option padding size.',

@@ -2,13 +2,13 @@
 
 /**
  * @file BaseTypeahead.test.tsx
- * @input BaseTypeahead public props and a synchronous SearchSource
- * @output Combobox contract tests, including stale source refresh on focus and reopen
+ * @input BaseTypeahead public props, synchronous and asynchronous SearchSources
+ * @output Combobox contracts, including disabled focus, activation, and stale work
  * @position Colocated verification for BaseTypeahead
  */
 
 import {afterAll, beforeAll, describe, expect, it, vi} from 'vitest';
-import {fireEvent, render, screen, waitFor} from '@testing-library/react';
+import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as stylex from '@stylexjs/stylex';
 import {BaseTypeahead} from './BaseTypeahead';
@@ -67,6 +67,277 @@ const testStyles = stylex.create({
 });
 
 describe('BaseTypeahead', () => {
+  it.each([undefined, false, true])(
+    'keeps disabled inputs focusable and inert with isFocusableDisabled=%s',
+    async isFocusableDisabled => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const onChangeQuery = vi.fn();
+      const bootstrap = vi.fn(() => [resultItem]);
+      render(
+        <>
+          <button type="button">Before</button>
+          <BaseTypeahead
+            searchSource={{search: () => [resultItem], bootstrap}}
+            value={resultItem}
+            onChange={onChange}
+            onChangeQuery={onChangeQuery}
+            isDisabled
+            isFocusableDisabled={isFocusableDisabled}
+            hasEntriesOnFocus
+            aria-label="Search"
+            aria-describedby="disabled-reason"
+          />
+          <span id="disabled-reason">Not available</span>
+          <button type="button">After</button>
+        </>,
+      );
+      const input = screen.getByRole('combobox', {name: 'Search'});
+      await user.tab();
+      await user.tab();
+      expect(input).toHaveFocus();
+      expect(input).not.toHaveAttribute('disabled');
+      expect(input).toHaveAttribute('aria-disabled', 'true');
+      expect(input).toHaveAttribute('readonly');
+      expect(input).toHaveAccessibleDescription('Not available');
+      await user.keyboard('{ArrowDown}{Enter}');
+      await user.type(input, 'query');
+      expect(input).toHaveValue('');
+      expect(input).toHaveAttribute('aria-expanded', 'false');
+      expect(input).not.toHaveAttribute('aria-activedescendant');
+      expect(bootstrap).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+      expect(onChangeQuery).not.toHaveBeenCalled();
+      await user.tab();
+      expect(screen.getByRole('button', {name: 'After'})).toHaveFocus();
+    },
+  );
+
+  it('does not open on ArrowDown when initially focusable-disabled', async () => {
+    const user = userEvent.setup();
+    const bootstrap = vi.fn(() => [resultItem]);
+    render(
+      <BaseTypeahead
+        searchSource={{search: () => [], bootstrap}}
+        value={null}
+        onChange={vi.fn()}
+        hasEntriesOnFocus
+        isDisabled
+        isFocusableDisabled
+      />,
+    );
+    const input = screen.getByRole('combobox');
+    await user.tab();
+    await user.keyboard('{ArrowDown}');
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    expect(bootstrap).not.toHaveBeenCalled();
+  });
+
+  it.each(['Enter', 'pointer'])(
+    'rejects %s selection after an enabled open highlight becomes disabled',
+    async activation => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const source: SearchSource<SearchableItem> = {
+        search: () => [],
+        bootstrap: () => [resultItem, {id: '2', label: 'Banana'}],
+      };
+      const field = (isDisabled: boolean) => (
+        <BaseTypeahead
+          searchSource={source}
+          value={resultItem}
+          onChange={onChange}
+          hasEntriesOnFocus
+          isDisabled={isDisabled}
+          isFocusableDisabled
+        />
+      );
+      const {rerender} = render(field(false));
+      const input = screen.getByRole('combobox');
+      await user.tab();
+      await user.keyboard('{ArrowDown}');
+      const option = screen.getByRole('option', {name: 'Banana', hidden: true});
+      expect(input).toHaveAttribute('aria-activedescendant', option.id);
+      rerender(field(true));
+      if (activation === 'Enter') {
+        await user.keyboard('{Enter}');
+      } else {
+        fireEvent.click(option);
+      }
+      expect(onChange).not.toHaveBeenCalled();
+      expect(input).toHaveFocus();
+      expect(input).toHaveAttribute('aria-expanded', 'false');
+      expect(input).not.toHaveAttribute('aria-activedescendant');
+    },
+  );
+
+  it.each(['search', 'bootstrap'] as const)(
+    'invalidates pending %s on disablement even if re-enabled before resolution',
+    async operation => {
+      const user = userEvent.setup();
+      let resolve!: (items: SearchableItem[]) => void;
+      const pending = new Promise<SearchableItem[]>(done => {
+        resolve = done;
+      });
+      const onOpenChange = vi.fn();
+      const onChange = vi.fn();
+      const source: SearchSource<SearchableItem> = {
+        search: vi.fn(async () => pending),
+        bootstrap: vi.fn(async () =>
+          operation === 'bootstrap' ? pending : [],
+        ),
+        cancel: vi.fn(),
+      };
+      const field = (isDisabled: boolean) => (
+        <BaseTypeahead
+          searchSource={source}
+          value={null}
+          onChange={onChange}
+          onOpenChange={onOpenChange}
+          isDisabled={isDisabled}
+          hasEntriesOnFocus={operation === 'bootstrap'}
+          debounceMs={0}
+        />
+      );
+      const {rerender} = render(field(false));
+      const input = screen.getByRole('combobox');
+      await user.tab();
+      if (operation === 'search') {
+        await user.type(input, 'query');
+      }
+      expect(input).toHaveAttribute('aria-busy', 'true');
+      rerender(field(true));
+      expect(input).not.toHaveAttribute('aria-busy');
+      rerender(field(false));
+      await act(async () => {
+        resolve([resultItem]);
+      });
+      expect(input).toHaveAttribute('aria-expanded', 'false');
+      expect(input).not.toHaveAttribute('aria-activedescendant');
+      expect(
+        screen.queryByRole('option', {name: 'Result', hidden: true}),
+      ).not.toBeInTheDocument();
+      expect(onOpenChange).not.toHaveBeenCalledWith(true);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(input).toHaveFocus();
+    },
+  );
+
+  it('cancels a scheduled search when disabled and retains the query', async () => {
+    const search = vi.fn(() => [resultItem]);
+    const source = {search, bootstrap: () => []};
+    const field = (isDisabled: boolean) => (
+      <BaseTypeahead
+        searchSource={source}
+        value={null}
+        onChange={vi.fn()}
+        isDisabled={isDisabled}
+        debounceMs={20}
+      />
+    );
+    const {rerender} = render(field(false));
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, {target: {value: 'query'}});
+    rerender(field(true));
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 40));
+    });
+    expect(search).not.toHaveBeenCalled();
+    expect(input).toHaveValue('query');
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('rejects a pointer-deferred open after disablement', async () => {
+    const source = {search: () => [], bootstrap: () => [resultItem]};
+    const field = (isDisabled: boolean) => (
+      <BaseTypeahead
+        searchSource={source}
+        value={null}
+        onChange={vi.fn()}
+        isDisabled={isDisabled}
+        hasEntriesOnFocus
+      />
+    );
+    const {rerender} = render(field(false));
+    const input = screen.getByRole('combobox');
+    fireEvent.pointerDown(input);
+    fireEvent.focus(input);
+    rerender(field(true));
+    fireEvent.click(input);
+    await act(async () => {
+      await new Promise(requestAnimationFrame);
+    });
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('blocks query and activation callbacks while preserving focus observation', () => {
+    const onChangeQuery = vi.fn();
+    const onKeyDown = vi.fn();
+    const onClick = vi.fn();
+    const onPointerDown = vi.fn();
+    const onFocus = vi.fn();
+    const queryEntries = vi.fn(() => [resultItem]);
+    render(
+      <BaseTypeahead
+        searchSource={emptySource}
+        value={null}
+        onChange={vi.fn()}
+        isDisabled
+        isFocusableDisabled
+        onChangeQuery={onChangeQuery}
+        onKeyDown={onKeyDown}
+        onClick={onClick}
+        onPointerDown={onPointerDown}
+        onFocus={onFocus}
+        __queryEntries={queryEntries}
+      />,
+    );
+    const input = screen.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.pointerDown(input);
+    fireEvent.click(input);
+    fireEvent.keyDown(input, {key: 'Backspace'});
+    fireEvent.change(input, {target: {value: 'query'}});
+    expect(onFocus).toHaveBeenCalledOnce();
+    expect(onChangeQuery).not.toHaveBeenCalled();
+    expect(onKeyDown).not.toHaveBeenCalled();
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onPointerDown).not.toHaveBeenCalled();
+    expect(queryEntries).not.toHaveBeenCalled();
+    expect(input).toHaveValue('');
+  });
+
+  it('ignores isFocusableDisabled on an enabled input and preserves an explicit Tab exclusion', async () => {
+    const user = userEvent.setup();
+    const onChangeQuery = vi.fn();
+    const {rerender} = render(
+      <BaseTypeahead
+        searchSource={emptySource}
+        value={null}
+        onChange={vi.fn()}
+        onChangeQuery={onChangeQuery}
+        isFocusableDisabled
+        inputTabIndex={-1}
+      />,
+    );
+    const input = screen.getByRole('combobox');
+    await user.type(input, 'a');
+    expect(input).toHaveValue('a');
+    expect(onChangeQuery).toHaveBeenCalledWith('a');
+    expect(input).not.toHaveAttribute('aria-disabled');
+    rerender(
+      <BaseTypeahead
+        searchSource={emptySource}
+        value={null}
+        onChange={vi.fn()}
+        isDisabled
+        inputTabIndex={-1}
+      />,
+    );
+    expect(input).toHaveAttribute('tabindex', '-1');
+    expect(input).toHaveFocus();
+  });
+
   it('forwards supported DOM, styling, and event props to the combobox input', () => {
     const onBlur = vi.fn();
     const onFocus = vi.fn();

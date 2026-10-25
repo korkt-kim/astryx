@@ -3,7 +3,7 @@
 /**
  * @file Typeahead.test.tsx
  * @input Uses vitest, @testing-library/react, Typeahead, BaseTypeahead
- * @output Unit tests for Typeahead components
+ * @output Unit tests for Typeahead components, including focusable disabled inputs
  * @position Testing; validates Typeahead.tsx and BaseTypeahead.tsx
  *
  * SYNC: When Typeahead components change, update tests to match
@@ -375,7 +375,12 @@ describe('BaseTypeahead', () => {
         isDisabled
       />,
     );
-    expect(screen.getByRole('combobox')).toBeDisabled();
+    expect(screen.getByRole('combobox')).not.toHaveAttribute('disabled');
+    expect(screen.getByRole('combobox')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('combobox')).toHaveAttribute('readonly');
   });
 
   it('uses anchorRef for dropdown positioning', () => {
@@ -2228,7 +2233,7 @@ describe('Typeahead disabledMessage', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('remains natively disabled when disabled without a reason', () => {
+  it('remains focusable and inert when disabled without a reason', () => {
     render(
       <Typeahead
         label="Assignee"
@@ -2239,8 +2244,9 @@ describe('Typeahead disabledMessage', () => {
       />,
     );
     const input = screen.getByRole('combobox');
-    expect(input).toBeDisabled();
-    expect(input).not.toHaveAttribute('aria-disabled');
+    expect(input).not.toHaveAttribute('disabled');
+    expect(input).toHaveAttribute('aria-disabled', 'true');
+    expect(input).toHaveAttribute('readonly');
   });
 });
 

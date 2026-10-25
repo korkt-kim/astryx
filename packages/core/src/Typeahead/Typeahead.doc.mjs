@@ -154,14 +154,15 @@ export const docs = {
     {
       name: 'isDisabled',
       type: 'boolean',
-      description: 'Disables the input.',
+      description:
+        'Blocks editing and selection while keeping the input focusable, with or without a disabled reason.',
       default: 'false',
     },
     {
       name: 'disabledMessage',
       type: 'string',
       description:
-        'Explains why the input is disabled. With isDisabled, shows a tooltip on hover/keyboard focus and keeps the field focusable via aria-disabled (activation stays blocked). Use this instead of wrapping a disabled Typeahead in Tooltip. Disabled controls swallow the hover events an external Tooltip needs.',
+        'Explains why the input is disabled. With isDisabled, shows a tooltip on hover and keyboard focus and connects the reason to the input for assistive technology. Disabled inputs remain focusable even without a reason.',
     },
     {
       name: 'maxMenuItems',
@@ -279,12 +280,14 @@ export const docs = {
     {
       name: 'containerClassName',
       type: 'string',
-      description: 'Class name for the field container. Same targeting as `containerXstyle`.',
+      description:
+        'Class name for the field container. Same targeting as `containerXstyle`.',
     },
     {
       name: 'containerStyle',
       type: 'CSSProperties',
-      description: 'Inline styles for the field container. Same targeting as `containerXstyle`.',
+      description:
+        'Inline styles for the field container. Same targeting as `containerXstyle`.',
     },
     {
       name: 'controlXstyle',
@@ -354,7 +357,7 @@ export const docs = {
       {
         guidance: false,
         description:
-          'Wrap a disabled Typeahead in Tooltip to explain why it is disabled; disabled triggers swallow the hover events the wrapper needs. Use the disabledMessage prop instead.',
+          'Wrap a disabled Typeahead in Tooltip to explain why it is disabled. Use disabledMessage to connect the reason to the input and show it on hover and keyboard focus.',
       },
     ],
   },
@@ -398,7 +401,7 @@ export const docsZh = {
       {
         guidance: false,
         description:
-          'Wrap a disabled Typeahead in Tooltip to explain why it is disabled; disabled triggers swallow the hover events the wrapper needs. Use the disabledMessage prop instead.',
+          'Wrap a disabled Typeahead in Tooltip to explain why it is disabled. Use disabledMessage to connect the reason to the input and show it on hover and keyboard focus.',
       },
     ],
   },
@@ -449,7 +452,7 @@ export const docsDense = {
       {
         guidance: false,
         description:
-          'Wrap a disabled Typeahead in Tooltip to explain why it is disabled; disabled triggers swallow the hover events the wrapper needs. Use the disabledMessage prop instead.',
+          'Wrap a disabled Typeahead in Tooltip to explain why it is disabled. Use disabledMessage to connect the reason to the input and show it on hover and keyboard focus.',
       },
     ],
   },

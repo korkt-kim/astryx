@@ -5,7 +5,7 @@
 /**
  * @file BaseTypeahead.tsx
  * @input Uses React, StyleX, usePopover, TypeaheadItem
- * @output Exports BaseTypeahead; focus bootstraps a replaced search source
+ * @output Exports BaseTypeahead; disabled inputs keep focus and reject activation or stale work
  * @position Core implementation; used by Typeahead and Tokenizer
  *
  * Pure combobox engine: input, search, keyboard navigation, dropdown.
@@ -150,13 +150,10 @@ export interface BaseTypeaheadProps<T extends SearchableItem> extends Omit<
   isDisabled?: boolean;
 
   /**
-   * When disabled with a reason, keeps the input focusable via `aria-disabled`
-   * (instead of the native `disabled` attribute) and `readOnly` so an
-   * associated disabled-reason tooltip stays discoverable by keyboard and
-   * assistive technology. Query and text mutation are blocked, but an
-   * already-open highlighted option can still be selected with Enter after a
-   * transition into this state. Consumers (Typeahead) own the tooltip and
-   * wrapper.
+   * Accepted for compatibility; has no effect. Every disabled input stays
+   * focusable with `aria-disabled` and `readOnly`, and blocks query changes,
+   * selection, and popup opening. Consumers own the disabled-reason tooltip
+   * and wrapper.
    * @default false
    */
   isFocusableDisabled?: boolean;
@@ -455,7 +452,7 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
   minQueryLength = 1,
   emptySearchText: emptySearchTextFromProps,
   isDisabled = false,
-  isFocusableDisabled = false,
+  isFocusableDisabled: _isFocusableDisabled,
   hasAutoFocus = false,
   onChangeQuery,
   onOpenChange,
@@ -506,6 +503,9 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const fallbackAnchorRef = useRef<HTMLInputElement>(null);
+  // Deferred work and callbacks from an earlier render must see committed
+  // disablement, not the state captured when the work began.
+  const disabledRef = useRef(isDisabled);
 
   // Announce result counts / "no results" to screen readers via a persistent
   // live region (comboboxes-6). The combobox's own popup carries no working
@@ -538,7 +538,11 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
   // matters because the row is in the DOM before the spinner clears.
   useAnnounceRenderedText(
     emptyStateRef,
-    results.length === 0 && hasSearched && query.length > 0 && !isLoading,
+    !isDisabled &&
+      results.length === 0 &&
+      hasSearched &&
+      query.length > 0 &&
+      !isLoading,
     query,
   );
 
@@ -610,8 +614,8 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
   // Debounce ref
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Monotonic counter incremented on selection, query-clear, and source
-  // replacement. Async searches that resolve afterwards compare their
+  // Monotonic counter incremented on selection, query-clear, disablement,
+  // and source replacement. Async searches compare their
   // captured generation to the current value and discard stale results.
   const searchGenRef = useRef(0);
   // The generation at which results were last populated. handleFocus
@@ -681,18 +685,61 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
     role: 'none',
   });
 
+  // Reset render state in the render that accepts disablement, as with a
+  // source replacement above. The layout effect only cancels external work.
+  const [disabledOfState, setDisabledOfState] = useState(isDisabled);
+  if (disabledOfState !== isDisabled) {
+    setDisabledOfState(isDisabled);
+    if (isDisabled) {
+      setIsLoading(false);
+      setHighlightedIndex(-1);
+      setHasSearched(false);
+    }
+  }
+
+  useIsomorphicLayoutEffect(() => {
+    const wasDisabled = disabledRef.current;
+    disabledRef.current = isDisabled;
+    if (!isDisabled || wasDisabled) {
+      return;
+    }
+    // Disablement ends the current interaction without replacing or blurring
+    // the input. Even re-enabling before a response arrives cannot revive it.
+    searchGenRef.current++;
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+      searchTimeoutRef.current = null;
+    }
+    searchSource.cancel?.();
+    if (loadingRef.current) {
+      loadingRef.current = false;
+      onLoadingChangeRef.current?.(false);
+    }
+    settleBusyAnnouncement();
+    popover.hide();
+  }, [isDisabled, popover, searchSource, settleBusyAnnouncement]);
+
   // Show the layer, deferring past the active click if a pointer is down.
   // Without this, popover="auto" light-dismiss immediately closes the
   // dropdown when it opens between pointerdown and pointerup/click.
   const showLayer = useCallback(() => {
+    if (disabledRef.current) {
+      return;
+    }
+    const gen = searchGenRef.current;
+    const showIfCurrent = () => {
+      if (!disabledRef.current && searchGenRef.current === gen) {
+        popover.show();
+      }
+    };
     if (pointerActiveRef.current) {
       document.addEventListener(
         'click',
-        () => requestAnimationFrame(() => popover.show()),
+        () => requestAnimationFrame(showIfCurrent),
         {once: true},
       );
     } else {
-      popover.show();
+      showIfCurrent();
     }
   }, [popover]);
 
@@ -710,6 +757,9 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
   // Perform search
   const performSearch = useCallback(
     async (searchQuery: string) => {
+      if (disabledRef.current) {
+        return;
+      }
       searchSource.cancel?.();
       // Claim a new generation so overlapping searches can't race: an
       // in-flight response for an older query fails the gen check below
@@ -796,6 +846,9 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
 
   // Perform bootstrap
   const performBootstrap = useCallback(async () => {
+    if (disabledRef.current) {
+      return;
+    }
     const gen = ++searchGenRef.current;
     let bootstrapResult: T[] | Promise<T[]>;
     try {
@@ -831,6 +884,9 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
   // Handle query change
   const handleQueryChange = useCallback(
     (newQuery: string) => {
+      if (disabledRef.current) {
+        return;
+      }
       setQuery(newQuery);
       onChangeQuery?.(newQuery);
 
@@ -911,6 +967,9 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
   // Handle item selection
   const handleSelect = useCallback(
     (item: T) => {
+      if (disabledRef.current) {
+        return;
+      }
       // Bump generation to invalidate any in-flight async searches
       searchGenRef.current++;
       if (searchTimeoutRef.current) {
@@ -1030,6 +1089,14 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
   const trailingKeyDown = useTrailingKeyDown();
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (disabledRef.current) {
+        // Keep Tab and text navigation available, but do not submit a form
+        // or call a composing owner's activation handler from disabled Enter.
+        if (e.key === 'Enter') {
+          e.preventDefault();
+        }
+        return;
+      }
       externalOnKeyDown?.(e);
       if (e.defaultPrevented) {
         return;
@@ -1050,7 +1117,7 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
         if (e.key === 'ArrowDown' && (hasEntriesOnFocus || query.length > 0)) {
           e.preventDefault();
           if (results.length > 0) {
-            popover.show();
+            showLayer();
             setHighlightedIndex(0);
           } else if (
             hasEntriesOnFocus &&
@@ -1127,6 +1194,7 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
       query,
       minQueryLength,
       performBootstrap,
+      showLayer,
       externalOnKeyDown,
     ],
   );
@@ -1181,43 +1249,49 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
         aria-busy={isLoading || undefined}
         aria-describedby={inputAriaDescribedBy}
         aria-labelledby={inputAriaLabelledBy}
-        aria-disabled={isFocusableDisabled ? 'true' : undefined}
+        aria-disabled={isDisabled || undefined}
         tabIndex={resolvedInputTabIndex}
         value={query}
         onChange={handleInputChange}
-        onPointerDown={composeEventHandlers(() => {
-          // Captured before the browser's own default action moves focus
-          // onto the input as part of this same pointerdown — see
-          // wasAlreadyFocusedRef above.
-          wasAlreadyFocusedRef.current =
-            document.activeElement === inputRef.current;
-          pointerActiveRef.current = true;
-          document.addEventListener(
-            'click',
-            () => {
-              pointerActiveRef.current = false;
-            },
-            {once: true},
-          );
-        }, onPointerDownProp)}
+        onPointerDown={composeEventHandlers(
+          () => {
+            // Captured before the browser's own default action moves focus
+            // onto the input as part of this same pointerdown — see
+            // wasAlreadyFocusedRef above.
+            wasAlreadyFocusedRef.current =
+              document.activeElement === inputRef.current;
+            pointerActiveRef.current = true;
+            document.addEventListener(
+              'click',
+              () => {
+                pointerActiveRef.current = false;
+              },
+              {once: true},
+            );
+          },
+          isDisabled ? undefined : onPointerDownProp,
+        )}
         onFocus={composeEventHandlers(handleFocus, onFocusProp)}
-        onClick={composeEventHandlers(handleClick, onClickProp)}
+        onClick={
+          isDisabled
+            ? event => event.preventDefault()
+            : composeEventHandlers(handleClick, onClickProp)
+        }
         onBlur={composeEventHandlers(handleBlur, onBlurProp)}
         onKeyDown={
           trailingKeyDown
             ? event => {
                 handleKeyDown(event);
-                trailingKeyDown(event);
+                if (!disabledRef.current) {
+                  trailingKeyDown(event);
+                }
               }
             : handleKeyDown
         }
         placeholder={placeholder}
-        // When a disabled-reason tooltip is shown the input keeps focusability
-        // via aria-disabled + readOnly instead of the native disabled
-        // attribute. Query and text mutation are blocked, but an already-open
-        // highlighted option can still be selected with Enter after transition.
-        disabled={isDisabled && !isFocusableDisabled}
-        readOnly={isFocusableDisabled || undefined}
+        // Preserve the input node and its existing Tab eligibility. Read-only
+        // blocks native editing; the owned handlers also guard mutation.
+        readOnly={isDisabled || undefined}
         autoFocus={hasAutoFocus}
         data-autofocus={hasAutoFocus || undefined}
         autoComplete="off"
@@ -1274,6 +1348,7 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
                     id={getItemId(index)}
                     role="option"
                     aria-selected={isSelected}
+                    aria-disabled={isDisabled || undefined}
                     tabIndex={-1}
                     onClick={() => handleSelect(item)}
                     // Highlight follows pointer movement, not pointer
@@ -1281,11 +1356,17 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
                     // pointer keeps its keyboard highlight, so Enter acts on
                     // the option the user was shown, not the one that
                     // happened to appear under the cursor.
-                    onMouseMove={() => highlightOnHover(index)}
+                    onMouseMove={() => {
+                      if (!disabledRef.current) {
+                        highlightOnHover(index);
+                      }
+                    }}
                     {...stylex.props(
                       styles.item,
                       itemSizeStyles[size],
-                      index === highlightedIndex && styles.itemHighlighted,
+                      !isDisabled &&
+                        index === highlightedIndex &&
+                        styles.itemHighlighted,
                       isSelected && styles.itemSelected,
                     )}>
                     <span {...stylex.props(styles.itemContent)}>

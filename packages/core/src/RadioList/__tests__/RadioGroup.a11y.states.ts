@@ -3,7 +3,7 @@
 /**
  * @file RadioGroup.a11y.states.ts
  * @input Uses RadioGroupStateFacts from @astryxdesign/a11y-spec
- * @output The AST-021 binding inventory for every current radio-group part, representative states, and explicit exclusions
+ * @output The AST-021 radio-group inventory, including focusable disabled RadioList options and their reasons
  * @position Data-only inventory shared by jsdom, Storybook, and Chromium bindings.
  */
 
@@ -209,12 +209,13 @@ export const RADIO_GROUP_BINDING_STATES = [
   {
     id: 'radio-list-option-group-disabled',
     binding: 'RadioListItem',
-    summary: 'an option disabled by its group without a tabReachable reason',
+    summary:
+      'a selected option that keeps its Tab entry when the group is disabled',
     facts: optionFacts({
       checked: true,
       disabled: true,
       operable: false,
-      tabReachable: false,
+      tabReachable: true,
       pointerCancellation: false,
     }),
     subjectName: 'Standard',
@@ -223,10 +224,12 @@ export const RADIO_GROUP_BINDING_STATES = [
   {
     id: 'radio-list-option-disabled-with-message',
     binding: 'RadioListItem',
-    summary: 'an unavailable option kept tabReachable for a group-level reason',
+    summary:
+      'an unavailable option with its group reason on the focusable radio',
     facts: optionFacts({
       checked: true,
       disabled: true,
+      description: 'Managed by your administrator',
       operable: false,
       tabReachable: true,
       pointerCancellation: false,

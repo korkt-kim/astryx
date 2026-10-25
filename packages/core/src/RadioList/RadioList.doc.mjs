@@ -55,6 +55,12 @@ export const docs = {
       required: true,
     },
     {
+      name: 'onKeyDown',
+      type: 'KeyboardEventHandler<HTMLDivElement>',
+      description:
+        'Runs before arrow selection, including when individually disabled options are skipped. Call preventDefault to cancel the keyboard operation.',
+    },
+    {
       name: 'children',
       type: 'ReactNode',
       description: 'RadioListItem elements.',
@@ -89,7 +95,8 @@ export const docs = {
     {
       name: 'isDisabled',
       type: 'boolean',
-      description: 'Whether all radio items are disabled.',
+      description:
+        'Disables selection and activation callbacks while preserving focus and the group Tab entry. Uses aria-disabled, not native disabled. Disabled values are excluded from form submission and validation.',
       default: 'false',
     },
     {
@@ -102,7 +109,7 @@ export const docs = {
       name: 'disabledMessage',
       type: 'string',
       description:
-        'Explains why the group is disabled. Applies to the whole-group disabled state (isDisabled), not per item. With isDisabled, shows a tooltip on hover/keyboard focus and keeps the radios focusable via aria-disabled (selection stays blocked). Use this instead of wrapping a disabled RadioList in Tooltip. Disabled controls swallow the hover events an external Tooltip needs.',
+        'Explains why the group is disabled. Applies to the whole-group disabled state (isDisabled), not per item. Shows a tooltip on hover/keyboard focus and describes each focused radio alongside its own description. Radios remain focusable without a reason too; selection and activation callbacks stay blocked.',
     },
     {
       name: 'isRequired',
@@ -221,7 +228,7 @@ export const docs = {
       {
         guidance: false,
         description:
-          'Wrap a disabled RadioList in Tooltip to explain why it is disabled; disabled controls swallow the hover events the wrapper needs. Use the disabledMessage prop instead.',
+          'Wrap a disabled RadioList in Tooltip to explain why it is disabled. Use disabledMessage to attach the reason to each focusable radio and show it on hover or keyboard focus.',
       },
     ],
     anatomy: [
@@ -283,7 +290,7 @@ export const docsZh = {
       {
         guidance: false,
         description:
-          'Wrap a disabled RadioList in Tooltip to explain why it is disabled; disabled controls swallow the hover events the wrapper needs. Use the disabledMessage prop instead.',
+          'Wrap a disabled RadioList in Tooltip to explain why it is disabled. Use disabledMessage to attach the reason to each focusable radio and show it on hover or keyboard focus.',
       },
     ],
     anatomy: [
@@ -347,7 +354,7 @@ export const docsDense = {
       {
         guidance: false,
         description:
-          'Wrap a disabled RadioList in Tooltip to explain why it is disabled; disabled controls swallow the hover events the wrapper needs. Use the disabledMessage prop instead.',
+          'Wrap a disabled RadioList in Tooltip to explain why it is disabled. Use disabledMessage to attach the reason to each focusable radio and show it on hover or keyboard focus.',
       },
     ],
     anatomy: [

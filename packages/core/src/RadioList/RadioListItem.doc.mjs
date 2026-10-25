@@ -53,7 +53,8 @@ export const docs = {
     {
       name: 'isDisabled',
       type: 'boolean',
-      description: 'Whether this individual radio item is disabled.',
+      description:
+        'Disables this option without removing its existing focus or Tab eligibility. Exposes aria-disabled, blocks selection and onClick, and excludes its value from form submission. Individual disabled options are skipped by arrow selection.',
       default: 'false',
     },
     {
@@ -164,7 +165,8 @@ export const docsDense = {
       'Plain-text radio name replacing the derived label. Use when visible text is absent; otherwise retain every visible label word.',
     value: 'Value of this radio item.',
     description: 'Secondary content below label. String or ReactNode.',
-    isDisabled: 'Whether this individual radio item disabled.',
+    isDisabled:
+      'Disables selection/click and form submission; retains focus/Tab eligibility via aria-disabled. Arrow selection skips individual disabled options.',
     startContent: 'Content rendered before radio circle.',
     endContent: 'Content rendered after label.',
   },

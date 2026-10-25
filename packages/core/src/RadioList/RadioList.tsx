@@ -5,7 +5,7 @@
 /**
  * @file RadioList.tsx
  * @input Uses React hooks, mounted native radios, layer-scoped context, Field, InputStatus
- * @output Exports RadioList component, RadioListProps, RadioListContext; shares disabled reason IDs with focused radios
+ * @output Exports RadioList component, RadioListProps, RadioListContext; preserves native entry and repairs disabled form-owner splits
  * @position Core implementation; consumed by index.ts, tested by RadioList.test.tsx
  *
  * SYNC: When modified, update these files to stay in sync:
@@ -102,7 +102,8 @@ export interface RadioListProps extends Omit<
    */
   description?: string;
   /**
-   * The currently selected value.
+   * The currently selected value. Hiding or inerting its row leaves the
+   * remaining eligible options' native keyboard entry available.
    */
   value: string;
   /**
@@ -286,10 +287,11 @@ export function RadioList({
     ],
   );
 
-  // A disabled member has no form owner, unlike its enabled siblings. Preserve
-  // native group eligibility across that split: the checked radio remains
-  // the group's one Tab stop. Unselected groups retain native forward/backward
-  // entry, skipping individually disabled members unless every member is off.
+  // A disabled member has no form owner, unlike its enabled siblings. Repair
+  // that split only while the checked radio can own the group's Tab stop.
+  // Otherwise let native grouping choose an eligible entry, including when a
+  // caller hides or inerts the checked row. Unselected individual-disabled
+  // members remain skipped unless every member is off.
   // Query the mounted controls rather than interpreting opaque children or
   // assuming that the controlled value matches an option.
   useIsomorphicLayoutEffect(() => {
@@ -307,30 +309,63 @@ export function RadioList({
       const hasAvailableItem = radios.some(
         radio => !radio.hasAttribute('data-radio-item-disabled'),
       );
+      let tabStop =
+        checked && radios.some(radio => radio.form !== checked.form)
+          ? checked
+          : undefined;
+      if (tabStop) {
+        const view = tabStop.ownerDocument.defaultView;
+        for (
+          let element: HTMLElement | null = tabStop;
+          element;
+          element = element.parentElement
+        ) {
+          const style = view?.getComputedStyle(element);
+          if (
+            element.hasAttribute('inert') ||
+            style?.display === 'none' ||
+            (element === tabStop &&
+              (style?.visibility === 'hidden' ||
+                style?.visibility === 'collapse'))
+          ) {
+            tabStop = undefined;
+            break;
+          }
+        }
+      }
       for (const radio of radios) {
         // Native required groups count a checked disabled member even though
         // its value is not submitted. Do not make enabled siblings invalidate
         // the form just because that checked member now has no form owner.
         radio.required =
           isRequired && (!checked || checked.form === radio.form);
-        radio.tabIndex = checked
-          ? radio === checked
+        radio.tabIndex = tabStop
+          ? radio === tabStop
             ? 0
             : -1
-          : hasAvailableItem && radio.hasAttribute('data-radio-item-disabled')
+          : radio !== checked &&
+              hasAvailableItem &&
+              radio.hasAttribute('data-radio-item-disabled')
             ? -1
             : 0;
       }
     };
     syncTabStops();
-    // A child may mount, unmount, or disable an option without rerendering this
-    // group. Observe those changes, but not our own tabindex writes or slots.
+    // A child may mount, unmount, disable, or hide an option without rerendering
+    // this group. Observe eligibility changes, but not our own tabindex writes.
     const observer = new MutationObserver(syncTabStops);
     observer.observe(group, {
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ['checked', 'data-radio-item-disabled'],
+      attributeFilter: [
+        'checked',
+        'data-radio-item-disabled',
+        'class',
+        'style',
+        'hidden',
+        'inert',
+      ],
     });
     return () => observer.disconnect();
   });

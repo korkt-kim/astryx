@@ -45,7 +45,8 @@ export const docs = {
     {
       name: 'value',
       type: 'string',
-      description: 'The currently selected value.',
+      description:
+        'The currently selected value. If its row is hidden or inert, the remaining eligible options still provide native keyboard entry without changing this value.',
       required: true,
     },
     {

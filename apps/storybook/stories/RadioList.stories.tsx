@@ -3,15 +3,22 @@
 /**
  * @file RadioList.stories.tsx
  * @input Public RadioList and RadioListItem props
- * @output Examples of controlled selection, content, and focusable disabled states
- * @position Storybook examples, including individual disablement and shared reasons
+ * @output Examples of controlled selection, content, focusable disabled states, and hidden selected rows
+ * @position Storybook examples, including native entry, individual disablement, and shared reasons
  */
 
 import {useState} from 'react';
+import * as stylex from '@stylexjs/stylex';
 import type {Meta, StoryObj} from '@storybook/react';
 import {RadioList, RadioListItem} from '@astryxdesign/core/RadioList';
 import {Badge} from '@astryxdesign/core/Badge';
 import {Link} from '@astryxdesign/core/Link';
+
+const styles = stylex.create({
+  hiddenOption: {
+    display: 'none',
+  },
+});
 
 const meta: Meta<typeof RadioList> = {
   title: 'Core/RadioList',
@@ -211,6 +218,34 @@ export const DisabledSelectedItem: Story = {
   args: {
     label: 'Notification preference',
     value: 'sms',
+  },
+};
+
+// Hiding the selected disabled row leaves the visible options reachable by Tab
+// without submitting the disabled value or invalidating the required group.
+export const HiddenSelectedItem: Story = {
+  render: args => {
+    const [value, setValue] = useState(args.value ?? 'email');
+    const {value: _value, onChange: _onChange, ...restArgs} = args;
+    return (
+      <form>
+        <RadioList {...restArgs} value={value} onChange={setValue}>
+          <RadioListItem
+            label="Email"
+            value="email"
+            isDisabled
+            xstyle={styles.hiddenOption}
+          />
+          <RadioListItem label="SMS" value="sms" />
+          <RadioListItem label="Push notification" value="push" />
+        </RadioList>
+      </form>
+    );
+  },
+  args: {
+    label: 'Notification preference',
+    htmlName: 'notification',
+    isRequired: true,
   },
 };
 

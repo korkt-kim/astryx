@@ -3,7 +3,7 @@
 /**
  * @file RadioList.focusableDisabled.test.tsx
  * @input Public RadioList/RadioListItem props, keyboard input, form data, and rerenders
- * @output Disabled focus, activation, description, and enabled-roundtrip regressions
+ * @output Disabled focus, hidden checked entry, activation, description, and enabled-roundtrip regressions
  * @position Component-local DOM tests; real focus and native arrows also need Chromium evidence
  */
 
@@ -65,6 +65,86 @@ describe('RadioList focusable disabled controls', () => {
       expect(onChange).toHaveBeenCalledExactlyOnceWith('b');
     },
   );
+
+  it.each([
+    {state: 'hidden', isDisabled: false},
+    {state: 'inert', isDisabled: false},
+    {state: 'hidden', isDisabled: true},
+  ])(
+    'keeps native Tab candidates when the checked row is $state (disabled=$isDisabled)',
+    ({state, isDisabled}) => {
+      const {container} = render(
+        <form>
+          <button type="button">Before</button>
+          <RadioList
+            label="Delivery"
+            htmlName="delivery"
+            value="a"
+            onChange={() => {}}
+            isRequired>
+            <RadioListItem
+              label="A"
+              value="a"
+              style={state === 'hidden' ? {display: 'none'} : undefined}
+              inert={state === 'inert'}
+              isDisabled={isDisabled}
+            />
+            <RadioListItem label="B" value="b" />
+            <RadioListItem label="C" value="c" />
+          </RadioList>
+          <button type="button">After</button>
+        </form>,
+      );
+      // userEvent prunes siblings of a checked radio before testing visibility
+      // and does not model inert. Chromium verifies actual forward/back Tab;
+      // this DOM lane ensures the remaining native group can supply its entry.
+      for (const name of ['B', 'C']) {
+        expect(screen.getByRole('radio', {name})).not.toHaveAttribute(
+          'tabindex',
+          '-1',
+        );
+      }
+      // Focus eligibility must not decide checked/required participation.
+      expect(container.querySelector('input[value="a"]')).toBeChecked();
+      const form = container.querySelector('form')!;
+      expect(form.checkValidity()).toBe(true);
+      expect(new FormData(form).get('delivery')).toBe(isDisabled ? null : 'a');
+    },
+  );
+
+  it('updates native entry when a child independently hides the selected disabled row', async () => {
+    const user = userEvent.setup();
+    function SelectedOption() {
+      const [hidden, setHidden] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setHidden(!hidden)}>
+            Toggle visibility
+          </button>
+          <RadioListItem
+            label="A"
+            value="a"
+            isDisabled
+            style={hidden ? {display: 'none'} : undefined}
+          />
+        </>
+      );
+    }
+    render(
+      <form>
+        <RadioList label="Delivery" value="a" onChange={() => {}}>
+          <SelectedOption />
+          <RadioListItem label="B" value="b" />
+        </RadioList>
+      </form>,
+    );
+    const b = screen.getByRole('radio', {name: 'B'});
+    expect(b).toHaveAttribute('tabindex', '-1');
+    await user.click(screen.getByRole('button', {name: 'Toggle visibility'}));
+    await waitFor(() => expect(b).not.toHaveAttribute('tabindex', '-1'));
+    await user.click(screen.getByRole('button', {name: 'Toggle visibility'}));
+    await waitFor(() => expect(b).toHaveAttribute('tabindex', '-1'));
+  });
 
   it('blocks consumer onClick after disabling a focused group with a reason and pressing ArrowDown', async () => {
     const user = userEvent.setup();

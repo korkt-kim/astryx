@@ -1,5 +1,17 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+'use client';
+
+/**
+ * @file Token.stories.tsx
+ * @input Token props and controlled disabled transitions
+ * @output Token examples, including keyboard focus retention on link disablement
+ * @position Storybook fixtures for Token's public interaction states
+ *
+ * SYNC: Keep the disabled link examples aligned with Token.tsx.
+ */
+
+import {useState} from 'react';
 import type {Meta, StoryObj} from '@storybook/react';
 import {Token, type TokenColor} from '@astryxdesign/core/Token';
 
@@ -121,16 +133,8 @@ export const WithRemove: Story = {
   render: () => (
     <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
       <Token label="Removable" onRemove={() => alert('Removed!')} />
-      <Token
-        label="Red tag"
-        color="red"
-        onRemove={() => alert('Removed!')}
-      />
-      <Token
-        label="Blue tag"
-        color="blue"
-        onRemove={() => alert('Removed!')}
-      />
+      <Token label="Red tag" color="red" onRemove={() => alert('Removed!')} />
+      <Token label="Blue tag" color="blue" onRemove={() => alert('Removed!')} />
     </div>
   ),
 };
@@ -155,6 +159,34 @@ export const AsLink: Story = {
       <Token label="Purple link" color="purple" href="#" />
     </div>
   ),
+};
+
+export const LinkDisabledTransition: Story = {
+  render: function LinkDisabledTransition() {
+    const [isDisabled, setIsDisabled] = useState(false);
+    return (
+      <Token
+        label="Link token"
+        href="#token-destination"
+        isDisabled={isDisabled}
+        description="Press D to toggle availability without moving focus."
+        onKeyDown={event => {
+          if (event.key.toLowerCase() === 'd') {
+            setIsDisabled(value => !value);
+          }
+        }}
+      />
+    );
+  },
+};
+
+export const DisabledLinkWithRemove: Story = {
+  args: {
+    label: 'Disabled removable link',
+    href: '#token-destination',
+    isDisabled: true,
+    onRemove: () => alert('Should not fire'),
+  },
 };
 
 export const WithEndContent: Story = {
@@ -270,12 +302,7 @@ export const AllVariations: Story = {
         <h4 style={{margin: '0 0 8px'}}>Clickable</h4>
         <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
           {allColors.map(color => (
-            <Token
-              key={color}
-              label={color}
-              color={color}
-              onClick={() => {}}
-            />
+            <Token key={color} label={color} color={color} onClick={() => {}} />
           ))}
         </div>
       </div>

@@ -1,7 +1,15 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-/** @type {import('@astryxdesign/cli/authoring').ComponentDoc} */
+/**
+ * @file Token.doc.mjs
+ * @input Token public props and disabled interaction behavior
+ * @output Consumer documentation, translations, and dense summaries
+ * @position Token's shipped component reference
+ *
+ * SYNC: Keep disabled link guidance aligned with Token.tsx and TokenLink.tsx.
+ */
 
+/** @type {import('@astryxdesign/cli/authoring').ComponentDoc} */
 export const docs = {
   name: 'Token',
   displayName: 'Token',
@@ -36,7 +44,7 @@ export const docs = {
       name: 'isDisabled',
       type: 'boolean',
       description:
-        'Whether the token is disabled; reduces opacity and blocks interactions.',
+        'Whether the token is disabled; reduces opacity and blocks activation, navigation, and removal. Interactive controls keep focus and their tab order and expose aria-disabled. A disabled link has no active destination.',
       default: 'false',
     },
     {
@@ -144,7 +152,7 @@ export const docsZh = {
       name: 'isDisabled',
       type: 'boolean',
       description:
-        '标记是否被禁用；降低透明度并阻止交互。',
+        '标记是否被禁用；降低透明度并阻止激活、导航和移除。交互控件保留焦点与 Tab 顺序，并公开 aria-disabled 状态。禁用链接不提供可用的导航目标。',
       default: 'false',
     },
     {
@@ -238,7 +246,7 @@ export const docsDense = {
     size: "Token size; 'sm', 'md', or 'lg'.",
     color: 'Color variant of token.',
     icon: 'Optional icon before label.',
-    isDisabled: 'Reduces opacity, blocks interactions.',
+    isDisabled: 'Dims and blocks activation/navigation/removal. Controls keep focus and tab order with aria-disabled; disabled links have no active destination.',
     onRemove: 'Fired on remove button click. Renders X button when provided.',
     onClick: 'Click handler. Renders <span> w/ invisible <button> inside for a11y.',
     href: 'Link URL. Renders as <a> element. Follows the shared navigation rule (see Link href).',

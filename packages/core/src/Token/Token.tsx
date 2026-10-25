@@ -5,7 +5,8 @@
 /**
  * @file Token.tsx
  * @input Uses React, ReactNode, StyleXStyles
- * @output Exports Token component, TokenProps, TokenColor, TokenColorMap types
+ * @output Exports Token component and types; disabled links keep their primary
+ *   control and focus while the shared link boundary blocks navigation
  * @position Core implementation; consumed by index.ts, tested by Token.test.tsx
  *
  * SYNC: When modified, update these files to stay in sync:
@@ -308,7 +309,8 @@ export function Token({
   const pressable = usePressFeedback();
   const t = useTranslator();
   const LinkComponent = useLinkComponent();
-  const role = useInteractiveRole({href, onClick, isDisabled});
+  // Disable activation, not the primary control's identity or focus order.
+  const role = useInteractiveRole({href, onClick});
 
   // When role is 'button' via context (no explicit onClick), treat as
   // if onClick was provided — the popover attaches its own handler.
@@ -370,7 +372,10 @@ export function Token({
             style,
           )}
           {...rest}
-          {...(isDisabled ? {'aria-disabled': true} : {})}
+          _isDisabled={isDisabled}
+          role={rest.role ?? (isDisabled ? 'link' : undefined)}
+          aria-disabled={isDisabled || rest['aria-disabled']}
+          {...(isDisabled ? disabledInteractionProps(rest.onKeyDown) : null)}
           {...sharedProps}>
           {content}
         </LinkComponent>

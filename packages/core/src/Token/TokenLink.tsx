@@ -6,7 +6,8 @@
  * @file TokenLink.tsx
  * @input Rendered token pieces (icon, label, endContent, remove button) plus
  *   container/link styling props and the resolved LinkComponent
- * @output Exports TokenLink, the interactive container for the href+onRemove Token variant
+ * @output Exports TokenLink, the href+onRemove container with a stable,
+ *   focusable primary link and disabled navigation/activation guards
  * @position Internal to Token; keeps Token.tsx presentational
  *
  * Token is a presentational component (see
@@ -25,11 +26,18 @@
  * - /packages/core/src/Token/Token.test.tsx (tests for delegated behavior)
  */
 
-import type {ReactNode, CSSProperties, Ref, HTMLAttributes} from 'react';
+import type {
+  ReactNode,
+  CSSProperties,
+  Ref,
+  HTMLAttributes,
+  SyntheticEvent,
+} from 'react';
 import {useRef} from 'react';
 import {useClickableContainer} from '../hooks/useClickableContainer';
 import type {LinkComponentType} from '../Link/types';
 import {composeEventHandlers} from '../utils';
+import {disabledInteractionProps} from '../utils/disabledInteraction';
 
 import {useMergedRefs} from '../hooks/useMergedRefs';
 export interface TokenLinkProps extends HTMLAttributes<HTMLElement> {
@@ -53,6 +61,11 @@ export interface TokenLinkProps extends HTMLAttributes<HTMLElement> {
   removeButton: ReactNode;
   /** Allow data-* attributes (e.g. data-testid, theme targets) on the container. */
   [dataAttr: `data-${string}`]: unknown;
+}
+
+function blockActivation(event: SyntheticEvent) {
+  event.preventDefault();
+  event.stopPropagation();
 }
 
 /**
@@ -91,6 +104,29 @@ export function TokenLink({
     <span
       ref={useMergedRefs(ref, containerRef)}
       {...containerProps}
+      // The container receives capture events before either child control.
+      // Guard activation here too; focus/blur and nonactivation keys still pass.
+      {...(isDisabled && {
+        onClickCapture: blockActivation,
+        onDoubleClickCapture: blockActivation,
+        onAuxClickCapture: blockActivation,
+        onContextMenuCapture: blockActivation,
+        onDragStartCapture: blockActivation,
+        onKeyDownCapture: (event: React.KeyboardEvent<HTMLElement>) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            blockActivation(event);
+          } else {
+            containerProps.onKeyDownCapture?.(event);
+          }
+        },
+        onKeyUpCapture: (event: React.KeyboardEvent<HTMLElement>) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            blockActivation(event);
+          } else {
+            containerProps.onKeyUpCapture?.(event);
+          }
+        },
+      })}
       onClick={
         isDisabled ? onClickProp : composeEventHandlers(onClickProp, onClick)
       }
@@ -103,7 +139,10 @@ export function TokenLink({
       <LinkComponent
         ref={linkRef as Ref<HTMLAnchorElement>}
         href={href}
+        _isDisabled={isDisabled}
+        role={isDisabled ? 'link' : undefined}
         aria-disabled={isDisabled || undefined}
+        {...(isDisabled ? disabledInteractionProps() : null)}
         {...linkStyleProps}>
         {labelContent}
       </LinkComponent>

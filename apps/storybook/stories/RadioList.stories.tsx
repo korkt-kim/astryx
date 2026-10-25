@@ -1,12 +1,5 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-/**
- * @file RadioList.stories.tsx
- * @input Public RadioList and RadioListItem props
- * @output Examples of controlled selection, content, focusable disabled states, and hidden selected rows
- * @position Storybook examples, including native entry, individual disablement, and shared reasons
- */
-
 import {useState} from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type {Meta, StoryObj} from '@storybook/react';

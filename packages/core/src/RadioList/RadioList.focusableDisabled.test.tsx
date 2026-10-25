@@ -1,12 +1,5 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-/**
- * @file RadioList.focusableDisabled.test.tsx
- * @input Public RadioList/RadioListItem props, keyboard input, form data, and rerenders
- * @output Disabled focus, hidden checked entry, activation, description, and enabled-roundtrip regressions
- * @position Component-local DOM tests; real focus and native arrows also need Chromium evidence
- */
-
 import {useState} from 'react';
 import {describe, expect, it, vi} from 'vitest';
 import {fireEvent, render, screen, waitFor} from '@testing-library/react';
@@ -196,6 +189,149 @@ describe('RadioList focusable disabled controls', () => {
       expect(onChange).not.toHaveBeenCalled();
       expect(screen.getByRole('radio', {name: 'A'})).toBeChecked();
       expect(b).not.toBeChecked();
+    },
+  );
+
+  it.each([
+    {scope: 'group', reason: false},
+    {scope: 'group', reason: true},
+    {scope: 'member', reason: false},
+    {scope: 'member', reason: true},
+  ])(
+    'blocks accepted click capture for $scope disablement (reason=$reason) and restores it on re-enable',
+    async ({scope, reason}) => {
+      const user = userEvent.setup();
+      const onCapture = vi.fn();
+      const onClick = vi.fn();
+      const onChange = vi.fn();
+      const view = (disabled: boolean) => (
+        <RadioList
+          label="Delivery"
+          value="a"
+          onChange={onChange}
+          isDisabled={scope === 'group' && disabled}
+          disabledMessage={reason ? 'Locked' : undefined}>
+          <RadioListItem label="A" value="a" />
+          <RadioListItem
+            label="B"
+            value="b"
+            isDisabled={scope === 'member' && disabled}
+            onClickCapture={onCapture}
+            onClick={onClick}
+          />
+        </RadioList>
+      );
+      const {rerender} = render(view(true));
+      const b = screen.getByRole('radio', {name: 'B'});
+      fireEvent.click(b);
+      b.focus();
+      await user.keyboard(' ');
+      expect(onCapture).not.toHaveBeenCalled();
+      expect(onClick).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+      expect(screen.getByRole('radio', {name: 'A'})).toBeChecked();
+      expect(b).not.toBeChecked();
+      expect(b).toHaveFocus();
+
+      rerender(view(false));
+      expect(screen.getByRole('radio', {name: 'B'})).toBe(b);
+      expect(b).toHaveFocus();
+      fireEvent.click(b);
+      expect(onCapture).toHaveBeenCalledTimes(1);
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledExactlyOnceWith('b');
+    },
+  );
+
+  it.each(['none', 'preventDefault', 'stopPropagation'] as const)(
+    'keeps enabled capture on the row before input bubble with %s',
+    cancel => {
+      const events: string[] = [];
+      let captureTarget: EventTarget | null = null;
+      let captureOwner: EventTarget | null = null;
+      render(
+        <RadioList label="Delivery" value="a" onChange={() => {}}>
+          <RadioListItem label="A" value="a" />
+          <RadioListItem
+            data-testid="row-b"
+            label="B"
+            value="b"
+            onClickCapture={event => {
+              captureTarget = event.target;
+              captureOwner = event.currentTarget;
+              events.push(`capture:${event.eventPhase}`);
+              if (cancel !== 'none') {
+                event[cancel]();
+              }
+            }}
+            onClick={event => events.push(`click:${event.defaultPrevented}`)}
+          />
+        </RadioList>,
+      );
+      const b = screen.getByRole('radio', {name: 'B'});
+      fireEvent.click(b);
+      expect(captureTarget).toBe(b);
+      expect(captureOwner).toBe(screen.getByTestId('row-b'));
+      expect(events).toEqual(
+        cancel === 'stopPropagation'
+          ? ['capture:1']
+          : ['capture:1', `click:${cancel === 'preventDefault'}`],
+      );
+    },
+  );
+
+  it.each(['group', 'member'] as const)(
+    'keeps caller slot activation and focus/keyboard observers with %s disablement',
+    async scope => {
+      const user = userEvent.setup();
+      const capture = vi.fn((event: React.MouseEvent) =>
+        event.preventDefault(),
+      );
+      const slotClick = vi.fn();
+      const groupClick = vi.fn();
+      const groupKey = vi.fn();
+      const focus = vi.fn();
+      const blur = vi.fn();
+      const key = vi.fn();
+      render(
+        <RadioList
+          label="Delivery"
+          value="a"
+          onChange={() => {}}
+          isDisabled={scope === 'group'}
+          onClick={groupClick}
+          onKeyDown={groupKey}>
+          <RadioListItem label="A" value="a" />
+          <RadioListItem
+            label="B"
+            value="b"
+            isDisabled={scope === 'member'}
+            onClickCapture={capture}
+            onFocus={focus}
+            onBlur={blur}
+            onKeyDown={key}
+            endContent={
+              <button type="button" onClick={slotClick}>
+                Details
+              </button>
+            }
+          />
+        </RadioList>,
+      );
+      const b = screen.getByRole('radio', {name: 'B'});
+      b.focus();
+      await user.keyboard('x');
+      screen.getByRole('radio', {name: 'A'}).focus();
+      expect(focus).toHaveBeenCalledTimes(1);
+      expect(blur).toHaveBeenCalledTimes(1);
+      expect(key).toHaveBeenCalledTimes(1);
+      expect(groupKey).toHaveBeenCalledTimes(1);
+      screen.getByRole('button', {name: 'Details'}).focus();
+      await user.keyboard('{Enter}');
+      expect(capture).not.toHaveBeenCalled();
+      expect(slotClick).toHaveBeenCalledTimes(1);
+      expect(groupClick).toHaveBeenCalledTimes(1);
+      expect(groupClick.mock.calls[0][0].defaultPrevented).toBe(false);
     },
   );
 

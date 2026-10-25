@@ -4,8 +4,8 @@
 
 /**
  * @file RadioList.tsx
- * @input Uses React hooks, mounted native radios, layer-scoped context, Field, InputStatus
- * @output Exports RadioList component, RadioListProps, RadioListContext; preserves native entry and repairs disabled form-owner splits
+ * @input Uses React useId, useCallback, useRef, layer-scoped context, ReactNode, Field, InputStatus
+ * @output Exports RadioList component, RadioListProps, RadioListContext
  * @position Core implementation; consumed by index.ts, tested by RadioList.test.tsx
  *
  * SYNC: When modified, update these files to stay in sync:

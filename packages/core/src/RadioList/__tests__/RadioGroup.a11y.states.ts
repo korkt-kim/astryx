@@ -3,7 +3,7 @@
 /**
  * @file RadioGroup.a11y.states.ts
  * @input Uses RadioGroupStateFacts from @astryxdesign/a11y-spec
- * @output The AST-021 radio-group inventory, including focusable disabled RadioList options and their reasons
+ * @output The AST-021 binding inventory for every current radio-group part, representative states, and explicit exclusions
  * @position Data-only inventory shared by jsdom, Storybook, and Chromium bindings.
  */
 

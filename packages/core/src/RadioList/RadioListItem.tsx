@@ -5,7 +5,7 @@
 /**
  * @file RadioListItem.tsx
  * @input Uses React use, useId, useRef, RadioListContext, Item
- * @output Exports RadioListItem component, RadioListItemProps; guards focusable disabled native radios
+ * @output Exports RadioListItem component, RadioListItemProps
  * @position Core implementation; consumed by index.ts, tested by RadioList.test.tsx
  *
  * Composes Item for the shared start content + label + description + end content layout.
@@ -245,6 +245,7 @@ export function RadioListItem({
   className,
   style,
   onClick,
+  onClickCapture,
   ...rest
 }: RadioListItemProps) {
   // Item marks itself as a pressable surface (the row delegates to the radio,
@@ -372,6 +373,9 @@ export function RadioListItem({
       // focusable control, so the row adds no second tab stop.
       interactiveRef={radioRef}
       isDisabled={isDisabled}
+      // Capture runs before the input's bubble guard. Guard only this accepted
+      // callback; do not cancel events belonging to independent slot controls.
+      onClickCapture={isDisabled ? undefined : onClickCapture}
       label={<span id={labelID}>{label}</span>}
       description={
         hasDescription ? (

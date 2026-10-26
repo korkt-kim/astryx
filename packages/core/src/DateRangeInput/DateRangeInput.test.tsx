@@ -3,7 +3,8 @@
 /**
  * @file DateRangeInput.test.tsx
  * @input Uses vitest, @testing-library/react, DateRangeInput component
- * @output Unit tests for DateRangeInput component behavior
+ * @output Unit tests for DateRangeInput, including disabled/loading transitions
+ *   while the picker is open
  * @position Testing; validates DateRangeInput.tsx implementation
  *
  * SYNC: When DateRangeInput.tsx changes, update tests to match new behavior
@@ -26,7 +27,7 @@ import {getButton, queryButton} from '../__tests__/fastRoleQueries';
 import * as stylex from '@stylexjs/stylex';
 import {colorVars} from '../theme/tokens.stylex';
 import {DateRangeInput} from './DateRangeInput';
-import type {DateRange} from './DateRangeInput';
+import type {DateRange, DateRangeInputProps} from './DateRangeInput';
 import {Icon} from '../Icon';
 import {defineTheme} from '../theme/defineTheme';
 import {generateThemeCSS} from '../theme/generateThemeRules';
@@ -764,6 +765,82 @@ describe('DateRangeInput', () => {
       fireEvent.click(getButton('Open calendar'));
       expect(getButton(/Range:/)).toHaveAttribute('aria-expanded', 'false');
     });
+  });
+});
+
+describe('DateRangeInput disabled commit boundaries', () => {
+  const props = {
+    label: 'Range',
+    value: {start: '2026-01-01', end: '2026-01-03'},
+    onChange: vi.fn(),
+    changeAction: vi.fn(),
+    disabledMessage: 'Reporting is locked',
+    presets: [
+      {
+        label: 'Last three days',
+        getRange: () => ({start: '2026-01-08', end: '2026-01-10'}),
+      },
+    ],
+    numberOfMonths: 1,
+    min: '2026-01-01',
+    max: '2026-01-31',
+  } satisfies DateRangeInputProps;
+
+  it('blocks pointer and keyboard preset commits while disabled, preserving focus and reason', async () => {
+    const user = userEvent.setup();
+    const {rerender} = render(<DateRangeInput {...props} />);
+    fireEvent.click(getButton('Open calendar'));
+    const preset = getButton('Last three days');
+    preset.focus();
+    rerender(<DateRangeInput {...props} isDisabled />);
+    fireEvent.click(preset);
+    await user.keyboard('{Enter} ');
+
+    expect(props.onChange).not.toHaveBeenCalled();
+    expect(props.changeAction).not.toHaveBeenCalled();
+    expect(preset).toHaveFocus();
+    expect(preset).not.toHaveAttribute('disabled');
+    expect(preset).toHaveAttribute('aria-disabled', 'true');
+    expect(preset).toHaveAttribute('data-disabled');
+    expect(preset).toHaveAccessibleDescription('Reporting is locked');
+    expect(getButton(/^Range:/)).toHaveTextContent(/Jan.*1.*Jan.*3/);
+    expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('rejects a calendar range when disabled between endpoints without closing or moving focus', () => {
+    const {rerender} = render(<DateRangeInput {...props} />);
+    fireEvent.click(getButton('Open calendar'));
+    fireEvent.click(getButton(/January 15, 2026/));
+    expect(props.onChange).not.toHaveBeenCalled();
+    const end = getButton(/January 16, 2026/);
+    end.focus();
+    rerender(<DateRangeInput {...props} isDisabled />);
+    fireEvent.click(end);
+
+    expect(props.onChange).not.toHaveBeenCalled();
+    expect(props.changeAction).not.toHaveBeenCalled();
+    expect(end).toHaveFocus();
+    expect(getButton(/^Range:/)).toHaveTextContent(/Jan.*1.*Jan.*3/);
+    expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('blocks preset and calendar commits while loading without disabled paint or reason', () => {
+    const {rerender} = render(<DateRangeInput {...props} />);
+    fireEvent.click(getButton('Open calendar'));
+    rerender(<DateRangeInput {...props} isLoading />);
+    const preset = getButton('Last three days');
+    expect(preset).toHaveAttribute('aria-disabled', 'true');
+    expect(preset).not.toHaveAttribute('data-disabled');
+    expect(preset).not.toHaveAttribute('aria-describedby');
+    fireEvent.click(preset);
+    expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(getButton(/January 15, 2026/));
+    fireEvent.click(getButton(/January 16, 2026/));
+
+    expect(props.onChange).not.toHaveBeenCalled();
+    expect(props.changeAction).not.toHaveBeenCalled();
+    expect(getButton(/^Range:/)).toHaveTextContent(/Jan.*1.*Jan.*3/);
+    expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'true');
   });
 });
 

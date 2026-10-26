@@ -613,7 +613,7 @@ export function DateRangeInput({
 
   const fireChange = useCallback(
     (newValue: DateRange | null) => {
-      if (isBusy) {
+      if (isEffectivelyDisabled) {
         return;
       }
       onChange(newValue);
@@ -624,7 +624,13 @@ export function DateRangeInput({
         });
       }
     },
-    [isBusy, onChange, changeAction, startTransition, setOptimisticValue],
+    [
+      isEffectivelyDisabled,
+      onChange,
+      changeAction,
+      startTransition,
+      setOptimisticValue,
+    ],
   );
 
   const handleToggle = useCallback(() => {
@@ -639,10 +645,13 @@ export function DateRangeInput({
 
   const handleRangeSelect = useCallback(
     (range: DateRange) => {
+      if (isEffectivelyDisabled) {
+        return;
+      }
       fireChange(range);
       popover.hide();
     },
-    [fireChange, popover],
+    [isEffectivelyDisabled, fireChange, popover],
   );
 
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -654,6 +663,9 @@ export function DateRangeInput({
   const handleClear = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
+      if (isEffectivelyDisabled) {
+        return;
+      }
       fireChange(null);
       // A keyboard activation (detail 0) leaves focus on the clear button,
       // which unmounts once the range is null and would drop focus to <body>;
@@ -663,7 +675,7 @@ export function DateRangeInput({
         triggerRef.current?.focus();
       }
     },
-    [fireChange],
+    [isEffectivelyDisabled, fireChange],
   );
 
   const triggerAriaLabel = optimisticValue
@@ -813,6 +825,7 @@ export function DateRangeInput({
                 const presetRange = preset.getRange();
                 const isActive = isRangeEqual(value, presetRange);
                 const isPresetDisabled =
+                  isDisabled ||
                   !isRangeWithinSpan(presetRange, maxRangeSpan, minRangeSpan) ||
                   isDateDisabled(plainDateFromISO(presetRange.start)) ||
                   isDateDisabled(plainDateFromISO(presetRange.end));
@@ -826,8 +839,14 @@ export function DateRangeInput({
                     // marked with aria-current (not aria-selected, a listbox
                     // concept that contradicted the Tab interaction) (forms-5).
                     aria-current={isActive ? 'true' : undefined}
-                    // Focusable while disabled (AR3, spec:AST-085 FR1).
-                    aria-disabled={isPresetDisabled || undefined}
+                    // Busy blocks activation without adding disabled paint.
+                    // Both states stay focusable (AR3, spec:AST-085 FR1).
+                    aria-disabled={isPresetDisabled || isBusy || undefined}
+                    aria-describedby={
+                      showsDisabledMessage
+                        ? disabledMessageTooltip.describedBy
+                        : undefined
+                    }
                     onClick={() => {
                       if (!isPresetDisabled) {
                         handleRangeSelect(presetRange);

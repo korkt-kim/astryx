@@ -786,6 +786,11 @@ describe('DateRangeInput disabled commit boundaries', () => {
     max: '2026-01-31',
   } satisfies DateRangeInputProps;
 
+  beforeEach(() => {
+    props.onChange.mockClear();
+    props.changeAction.mockClear();
+  });
+
   it('blocks pointer and keyboard preset commits while disabled, preserving focus and reason', async () => {
     const user = userEvent.setup();
     const {rerender} = render(<DateRangeInput {...props} />);

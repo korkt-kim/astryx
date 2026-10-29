@@ -97,6 +97,8 @@ export type {
   InputStatusType as DateRangeInputStatusType,
 } from '../Field';
 
+const disabledDateConstraints = [() => false];
+
 const styles = stylex.create({
   // The shared disabled style drops the focus ring; restore it while a
   // control inside the field holds focus (spec:AST-085 FR6). Defaults repeat it.
@@ -876,7 +878,9 @@ export function DateRangeInput({
             onChange={handleRangeSelect}
             min={min}
             max={max}
-            dateConstraints={dateConstraints}
+            dateConstraints={
+              isDisabled ? disabledDateConstraints : dateConstraints
+            }
             maxRangeSpan={maxRangeSpan}
             minRangeSpan={minRangeSpan}
             numberOfMonths={numberOfMonths}

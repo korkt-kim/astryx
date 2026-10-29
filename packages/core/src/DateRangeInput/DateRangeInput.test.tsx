@@ -3,8 +3,7 @@
 /**
  * @file DateRangeInput.test.tsx
  * @input Uses vitest, @testing-library/react, DateRangeInput component
- * @output Unit tests for DateRangeInput, including disabled/loading transitions
- *   while the picker is open
+ * @output Unit tests for DateRangeInput component behavior
  * @position Testing; validates DateRangeInput.tsx implementation
  *
  * SYNC: When DateRangeInput.tsx changes, update tests to match new behavior
@@ -12,7 +11,7 @@
 
 import {useState} from 'react';
 import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest';
-import {render, screen, fireEvent, waitFor} from '@testing-library/react';
+import {act, render, screen, fireEvent, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 function generateThemeTestCSS(theme: Parameters<typeof generateThemeCSS>[0]) {
@@ -812,21 +811,49 @@ describe('DateRangeInput disabled commit boundaries', () => {
     expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('rejects a calendar range when disabled between endpoints without closing or moving focus', () => {
+  it('rejects a calendar range when disabled between endpoints without announcing selection or moving focus', async () => {
+    const user = userEvent.setup();
     const {rerender} = render(<DateRangeInput {...props} />);
     fireEvent.click(getButton('Open calendar'));
     fireEvent.click(getButton(/January 15, 2026/));
     expect(props.onChange).not.toHaveBeenCalled();
+    const announcement = document.querySelector(
+      '[data-astryx-live-region="polite"]',
+    );
+    await waitFor(() => {
+      expect(announcement).toHaveTextContent('Select an end date.');
+    });
+
     const end = getButton(/January 16, 2026/);
-    end.focus();
+    act(() => end.focus());
     rerender(<DateRangeInput {...props} isDisabled />);
     fireEvent.click(end);
+    await user.keyboard('{Enter} ');
+    // Announcements are written on the next frame; do not assert silence early.
+    await act(async () => {
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    });
 
+    expect(announcement).not.toHaveTextContent('Selected range:');
+    expect(end).toHaveAttribute('aria-disabled', 'true');
+    expect(end).not.toHaveAttribute('disabled');
     expect(props.onChange).not.toHaveBeenCalled();
     expect(props.changeAction).not.toHaveBeenCalled();
     expect(end).toHaveFocus();
     expect(getButton(/^Range:/)).toHaveTextContent(/Jan.*1.*Jan.*3/);
     expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'true');
+
+    rerender(<DateRangeInput {...props} />);
+    expect(end).not.toHaveAttribute('aria-disabled');
+    await user.click(end);
+    expect(props.onChange).toHaveBeenCalledExactlyOnceWith({
+      start: '2026-01-15',
+      end: '2026-01-16',
+    });
+    expect(props.changeAction).toHaveBeenCalledExactlyOnceWith({
+      start: '2026-01-15',
+      end: '2026-01-16',
+    });
   });
 
   it('blocks preset and calendar commits while loading without disabled paint or reason', () => {

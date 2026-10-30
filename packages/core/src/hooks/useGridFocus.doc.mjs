@@ -1,5 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+/**
+ * @file useGridFocus.doc.mjs
+ * @input useGridFocus options and focus behavior
+ * @output Consumer documentation for grid navigation and disabled Tab-stop retention
+ * @position Hook documentation consumed by the Astryx CLI
+ */
+
 /** @type {import('@astryxdesign/cli/authoring').HookDoc} */
 export const docs = {
   name: 'useGridFocus',
@@ -83,7 +90,7 @@ export const docs = {
       name: 'options.hasRovingTabIndex',
       type: 'boolean',
       description:
-        'Own a single roving tab stop across the grid: one focusable cell (its resolved focus target) carries tabindex="0", the rest -1. Stamped/repaired on render and moved with arrow navigation. Attach the returned handleFocus to the container onFocus.',
+        'Own a single roving tab stop across the grid: one focusable cell (its resolved focus target) carries tabindex="0", the rest -1. Stamped/repaired on render and moved with arrow navigation. If all cells become non-navigable, the existing stop stays while its target remains mounted and focusable through aria-disabled; arrows still skip disabled cells. Attach the returned handleFocus to the container onFocus.',
       default: 'false',
       required: false,
     },
@@ -176,7 +183,7 @@ export const docsDense = {
     'options.onPageDown':
       'callback for Page Down key (e.g. navigate to next month in calendars).',
     'options.hasRovingTabIndex':
-      'own a single roving tab stop across the grid (one focus target tabindex=0, rest -1); repaired on render + moved with arrows. Attach handleFocus to onFocus. default false.',
+      'own a single roving tab stop across the grid (one focus target tabindex=0, rest -1); repaired on render + moved with arrows. All non-navigable: retain existing mounted aria-disabled stop, without enabling arrow navigation. Attach handleFocus to onFocus. default false.',
   },
   returnDescriptions: {
     gridRef: 'ref to attach to grid container element.',

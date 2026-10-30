@@ -6,7 +6,7 @@
  * @file useGridFocus.ts
  * @input Uses React useCallback, useRef, useIsomorphicLayoutEffect,
  *   isRtlElement
- * @output Exports useGridFocus hook for grid keyboard navigation
+ * @output Exports useGridFocus for grid navigation and retained aria-disabled Tab stops
  * @position Core hook; used by Calendar for date grid navigation. Auto-detects
  *   RTL from the container's computed direction so horizontal arrow keys
  *   follow visual direction (WCAG 1.3.2).
@@ -102,7 +102,9 @@ export interface UseGridFocusOptions {
    * {@link UseGridFocusOptions.getFocusTarget}), not the cell wrapper, so it
    * works when the focusable element is a descendant of the cell. An existing
    * `tabindex="0"` on a focus target is honored, letting the caller seed which
-   * cell is initially tabbable.
+   * cell is initially tabbable. If every cell becomes non-navigable, the
+   * previous stop is retained while its target remains mounted and is
+   * focusable through aria-disabled; arrow navigation still skips it.
    *
    * When false (the default), the hook only *moves* focus (`.focus()`) and
    * never touches `tabindex` — the caller owns tab-stop management.
@@ -218,6 +220,7 @@ export function useGridFocus<T extends HTMLElement = HTMLElement>(
   } = options;
 
   const gridRef = useRef<T>(null);
+  const tabStopRef = useRef<HTMLElement | null>(null);
 
   /**
    * Get all cells in the grid, in DOM order. This includes disabled and empty
@@ -291,16 +294,31 @@ export function useGridFocus<T extends HTMLElement = HTMLElement>(
   const syncTabStops = useCallback(() => {
     const targets = getFocusTargets();
     if (targets.length === 0) {
+      // A render can clear the seed when every day becomes aria-disabled.
+      // Preserve the last owned stop (AST-085 FR1), without moving focus or
+      // making disabled cells eligible for arrow navigation.
+      const previous = tabStopRef.current;
+      if (
+        previous?.getAttribute('aria-disabled') === 'true' &&
+        !previous.matches(':disabled') &&
+        getCells().some(cell => resolveFocusTarget(cell) === previous)
+      ) {
+        setTabIndex(previous, 0);
+      } else {
+        tabStopRef.current = null;
+      }
       return;
     }
     const current = targets.find(el => el.getAttribute('tabindex') === '0');
     const tabbable = current ?? targets[0];
+    tabStopRef.current = tabbable;
     for (const el of targets) {
       setTabIndex(el, el === tabbable ? 0 : -1);
     }
     // A cell that stopped being focusable (an aria-disabled day, for example,
     // which stays reachable by focus) can still hold the stop from earlier
-    // navigation; it never stays tabbable, so the grid keeps one Tab stop.
+    // navigation; with an enabled replacement it yields the stop, so the grid
+    // keeps one Tab stop.
     for (const cell of getCells()) {
       const el = cellFocusable(cell) ? null : resolveFocusTarget(cell);
       if (el != null) {
@@ -333,6 +351,7 @@ export function useGridFocus<T extends HTMLElement = HTMLElement>(
         return;
       }
       if (hasRovingTabIndex) {
+        tabStopRef.current = target;
         for (const el of getFocusTargets()) {
           setTabIndex(el, el === target ? 0 : -1);
         }

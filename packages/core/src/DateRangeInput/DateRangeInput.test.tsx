@@ -3,7 +3,7 @@
 /**
  * @file DateRangeInput.test.tsx
  * @input Uses vitest, @testing-library/react, DateRangeInput component
- * @output Unit tests for DateRangeInput component behavior
+ * @output Unit tests for DateRangeInput behavior, disabled commits, and retained calendar Tab stops
  * @position Testing; validates DateRangeInput.tsx implementation
  *
  * SYNC: When DateRangeInput.tsx changes, update tests to match new behavior
@@ -808,6 +808,38 @@ describe('DateRangeInput disabled commit boundaries', () => {
     expect(preset).toHaveAttribute('data-disabled');
     expect(preset).toHaveAccessibleDescription('Reporting is locked');
     expect(getButton(/^Range:/)).toHaveTextContent(/Jan.*1.*Jan.*3/);
+    expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('keeps each month grid Tab stop when disabled with focus on a preset', () => {
+    const calendarProps = {
+      ...props,
+      numberOfMonths: 2,
+      max: '2026-02-28',
+    } satisfies DateRangeInputProps;
+    const {container, rerender} = render(<DateRangeInput {...calendarProps} />);
+    fireEvent.click(getButton('Open calendar'));
+    const grids = Array.from(container.querySelectorAll('[role="grid"]'));
+    const tabStops = () =>
+      grids.map(grid =>
+        Array.from(grid.querySelectorAll('button[tabindex="0"]')),
+      );
+    const before = tabStops();
+    expect(before.map(stops => stops.length)).toEqual([1, 1]);
+
+    const preset = getButton('Last three days');
+    act(() => preset.focus());
+    rerender(<DateRangeInput {...calendarProps} isDisabled />);
+
+    expect(preset).toHaveFocus();
+    expect(tabStops().map(stops => stops.length)).toEqual([1, 1]);
+    expect(tabStops()).toEqual(before);
+    for (const [day] of before) {
+      expect(day).toHaveAttribute('aria-disabled', 'true');
+      expect(day).not.toHaveAttribute('disabled');
+    }
+    expect(props.onChange).not.toHaveBeenCalled();
+    expect(props.changeAction).not.toHaveBeenCalled();
     expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'true');
   });
 

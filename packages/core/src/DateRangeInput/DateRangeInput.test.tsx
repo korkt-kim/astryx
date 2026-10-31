@@ -3,7 +3,7 @@
 /**
  * @file DateRangeInput.test.tsx
  * @input Uses vitest, @testing-library/react, DateRangeInput component
- * @output Unit tests for DateRangeInput behavior, disabled commits, and retained calendar Tab stops
+ * @output DateRangeInput behavior and owner-disablement tests without changing date constraints
  * @position Testing; validates DateRangeInput.tsx implementation
  *
  * SYNC: When DateRangeInput.tsx changes, update tests to match new behavior
@@ -811,14 +811,20 @@ describe('DateRangeInput disabled commit boundaries', () => {
     expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('keeps each month grid Tab stop when disabled with focus on a preset', () => {
+  it('keeps date constraints and Tab stops and blocks paging when its owner becomes disabled', () => {
     const calendarProps = {
       ...props,
       numberOfMonths: 2,
-      max: '2026-02-28',
+      max: '2026-03-31',
+      dateConstraints: [(date: Date) => date.getDate() !== 20],
     } satisfies DateRangeInputProps;
     const {container, rerender} = render(<DateRangeInput {...calendarProps} />);
     fireEvent.click(getButton('Open calendar'));
+    const calendar = container.querySelector('.astryx-calendar');
+    const nextMonth = getButton('Next month');
+    expect(nextMonth).not.toHaveAttribute('aria-disabled');
+    const constrainedDay = getButton(/January 20, 2026/);
+    expect(constrainedDay).toHaveAttribute('aria-disabled', 'true');
     const grids = Array.from(container.querySelectorAll('[role="grid"]'));
     const tabStops = () =>
       grids.map(grid =>
@@ -831,13 +837,22 @@ describe('DateRangeInput disabled commit boundaries', () => {
     act(() => preset.focus());
     rerender(<DateRangeInput {...calendarProps} isDisabled />);
 
+    expect(calendar).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(nextMonth);
+    expect(Array.from(container.querySelectorAll('[role="grid"]'))).toEqual(
+      grids,
+    );
+    expect(grids[0]).toHaveAccessibleName('January 2026');
+    expect(grids[1]).toHaveAccessibleName('February 2026');
     expect(preset).toHaveFocus();
-    expect(tabStops().map(stops => stops.length)).toEqual([1, 1]);
     expect(tabStops()).toEqual(before);
     for (const [day] of before) {
-      expect(day).toHaveAttribute('aria-disabled', 'true');
+      // Owner availability is inherited; valid dates do not become invalid.
+      expect(day).not.toHaveAttribute('aria-disabled');
+      expect(day).not.toHaveAttribute('data-disabled');
       expect(day).not.toHaveAttribute('disabled');
     }
+    expect(constrainedDay).toHaveAttribute('aria-disabled', 'true');
     expect(props.onChange).not.toHaveBeenCalled();
     expect(props.changeAction).not.toHaveBeenCalled();
     expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'true');
@@ -857,17 +872,19 @@ describe('DateRangeInput disabled commit boundaries', () => {
     });
 
     const end = getButton(/January 16, 2026/);
+    const calendar = end.closest('.astryx-calendar');
     act(() => end.focus());
     rerender(<DateRangeInput {...props} isDisabled />);
     fireEvent.click(end);
-    await user.keyboard('{Enter} ');
+    await user.keyboard('{Enter} {ArrowRight}{PageDown}');
     // Announcements are written on the next frame; do not assert silence early.
     await act(async () => {
       await new Promise(resolve => requestAnimationFrame(resolve));
     });
 
     expect(announcement).not.toHaveTextContent('Selected range:');
-    expect(end).toHaveAttribute('aria-disabled', 'true');
+    expect(calendar).toHaveAttribute('aria-disabled', 'true');
+    expect(end).not.toHaveAttribute('aria-disabled');
     expect(end).not.toHaveAttribute('disabled');
     expect(props.onChange).not.toHaveBeenCalled();
     expect(props.changeAction).not.toHaveBeenCalled();
@@ -876,6 +893,7 @@ describe('DateRangeInput disabled commit boundaries', () => {
     expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'true');
 
     rerender(<DateRangeInput {...props} />);
+    expect(calendar).not.toHaveAttribute('aria-disabled');
     expect(end).not.toHaveAttribute('aria-disabled');
     await user.click(end);
     expect(props.onChange).toHaveBeenCalledExactlyOnceWith({
@@ -888,23 +906,27 @@ describe('DateRangeInput disabled commit boundaries', () => {
     });
   });
 
-  it('blocks preset and calendar commits while loading without disabled paint or reason', () => {
+  it('preserves loading-only selection dismissal without committing a range', () => {
     const {rerender} = render(<DateRangeInput {...props} />);
     fireEvent.click(getButton('Open calendar'));
     rerender(<DateRangeInput {...props} isLoading />);
     const preset = getButton('Last three days');
-    expect(preset).toHaveAttribute('aria-disabled', 'true');
+    expect(preset).not.toHaveAttribute('aria-disabled');
     expect(preset).not.toHaveAttribute('data-disabled');
     expect(preset).not.toHaveAttribute('aria-describedby');
     fireEvent.click(preset);
-    expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'true');
+    expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'false');
+
+    rerender(<DateRangeInput {...props} />);
+    fireEvent.click(getButton('Open calendar'));
     fireEvent.click(getButton(/January 15, 2026/));
+    rerender(<DateRangeInput {...props} isLoading />);
     fireEvent.click(getButton(/January 16, 2026/));
 
     expect(props.onChange).not.toHaveBeenCalled();
     expect(props.changeAction).not.toHaveBeenCalled();
     expect(getButton(/^Range:/)).toHaveTextContent(/Jan.*1.*Jan.*3/);
-    expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'true');
+    expect(getButton(/^Range:/)).toHaveAttribute('aria-expanded', 'false');
   });
 });
 

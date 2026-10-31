@@ -5,7 +5,7 @@
 /**
  * @file DateRangeInput.tsx
  * @input Uses React, Field, Calendar (range mode), VisuallyHidden, usePopover
- * @output Exports DateRangeInput component, DateRangeInputProps
+ * @output DateRangeInput and props; owner-disablement guards preserve date constraints and grid focus
  * @position Core implementation; consumed by index.ts, tested by DateRangeInput.test.tsx
  *
  * SYNC: When modified, update these files to stay in sync:
@@ -97,7 +97,18 @@ export type {
   InputStatusType as DateRangeInputStatusType,
 } from '../Field';
 
-const disabledDateConstraints = [() => false];
+const calendarNavigationKeys = new Set([
+  'ArrowLeft',
+  'ArrowRight',
+  'ArrowUp',
+  'ArrowDown',
+  'Home',
+  'End',
+  'PageUp',
+  'PageDown',
+  'Enter',
+  ' ',
+]);
 
 const styles = stylex.create({
   // The shared disabled style drops the focus ring; restore it while a
@@ -168,6 +179,9 @@ const styles = stylex.create({
   },
   popoverLayout: {
     display: 'flex',
+  },
+  disabledCalendar: {
+    pointerEvents: 'none',
   },
   presetSidebar: {
     display: 'flex',
@@ -647,13 +661,25 @@ export function DateRangeInput({
 
   const handleRangeSelect = useCallback(
     (range: DateRange) => {
-      if (isEffectivelyDisabled) {
+      if (isDisabled) {
         return;
       }
       fireChange(range);
       popover.hide();
     },
-    [isEffectivelyDisabled, fireChange, popover],
+    [isDisabled, fireChange, popover],
+  );
+
+  const handleCalendarInteractionCapture = useCallback(
+    (event: React.SyntheticEvent) => {
+      if (isDisabled) {
+        // Stop Calendar before it changes its range draft or announces a pick.
+        // Availability is not a date constraint: keep valid days and Tab stops.
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    },
+    [isDisabled],
   );
 
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -814,7 +840,15 @@ export function DateRangeInput({
         </VisuallyHidden>
       )}
       {popover.render(
-        <div {...stylex.props(styles.popoverLayout)}>
+        <div
+          onPointerDown={event => {
+            // The unavailable calendar is pointer-inert. Its layout receives
+            // the hit instead; do not let that press focus the popover shell.
+            if (isDisabled && event.target === event.currentTarget) {
+              event.preventDefault();
+            }
+          }}
+          {...stylex.props(styles.popoverLayout)}>
           {presets && presets.length > 0 && (
             <div
               role="group"
@@ -841,9 +875,8 @@ export function DateRangeInput({
                     // marked with aria-current (not aria-selected, a listbox
                     // concept that contradicted the Tab interaction) (forms-5).
                     aria-current={isActive ? 'true' : undefined}
-                    // Busy blocks activation without adding disabled paint.
-                    // Both states stay focusable (AR3, spec:AST-085 FR1).
-                    aria-disabled={isPresetDisabled || isBusy || undefined}
+                    // Focusable while disabled (AR3, spec:AST-085 FR1).
+                    aria-disabled={isPresetDisabled || undefined}
                     aria-describedby={
                       showsDisabledMessage
                         ? disabledMessageTooltip.describedBy
@@ -876,11 +909,19 @@ export function DateRangeInput({
             mode="range"
             value={optimisticValue}
             onChange={handleRangeSelect}
+            // ARIA disablement is inherited by focusable descendants without
+            // marking valid dates constraint-disabled or changing grid focus.
+            aria-disabled={isDisabled || undefined}
+            onClickCapture={handleCalendarInteractionCapture}
+            onKeyDownCapture={event => {
+              if (calendarNavigationKeys.has(event.key)) {
+                handleCalendarInteractionCapture(event);
+              }
+            }}
+            xstyle={isDisabled && styles.disabledCalendar}
             min={min}
             max={max}
-            dateConstraints={
-              isDisabled ? disabledDateConstraints : dateConstraints
-            }
+            dateConstraints={dateConstraints}
             maxRangeSpan={maxRangeSpan}
             minRangeSpan={minRangeSpan}
             numberOfMonths={numberOfMonths}

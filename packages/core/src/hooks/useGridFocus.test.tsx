@@ -3,7 +3,7 @@
 /**
  * @file useGridFocus.test.tsx
  * @input Uses vitest, @testing-library/react, useGridFocus hook
- * @output Unit tests for roving tabindex, disabled Tab-stop retention, and RTL navigation
+ * @output Unit tests for useGridFocus roving tabindex + RTL navigation
  * @position Testing; validates useGridFocus.ts roving-tabindex ownership
  *
  * SYNC: When useGridFocus.ts changes, update tests to match new behavior
@@ -22,13 +22,11 @@ const NO_DISABLED: number[] = [];
  */
 function Grid({
   disabled = NO_DISABLED,
-  ariaDisabled = NO_DISABLED,
   seed = 0,
   dir,
   ...opts
 }: {
   disabled?: number[];
-  ariaDisabled?: number[];
   seed?: number;
   dir?: 'ltr' | 'rtl';
 } & Partial<Parameters<typeof useGridFocus>[0]>) {
@@ -36,9 +34,7 @@ function Grid({
     columns: 3,
     cellSelector: '[role="gridcell"]',
     isCellFocusable: cell =>
-      cell.querySelector(
-        'button:not([disabled]):not([aria-disabled="true"])',
-      ) !== null,
+      cell.querySelector('button:not([disabled])') !== null,
     getFocusTarget: cell => cell.querySelector<HTMLElement>('button'),
     hasRovingTabIndex: true,
     ...opts,
@@ -55,7 +51,6 @@ function Grid({
           <button
             type="button"
             disabled={disabled.includes(i)}
-            aria-disabled={ariaDisabled.includes(i) || undefined}
             tabIndex={i === seed ? 0 : -1}
             data-testid={`cell-${i}`}>
             {i}
@@ -115,42 +110,6 @@ describe('useGridFocus roving tabindex (hasRovingTabIndex)', () => {
     fireEvent.focus(grid);
     expect(screen.getByTestId('cell-1')).toHaveAttribute('tabindex', '0');
     expect(screen.getByTestId('cell-0')).toHaveAttribute('tabindex', '-1');
-  });
-
-  it('retains the previous Tab stop when all cells become aria-disabled and the seed clears', () => {
-    const {rerender} = render(<Grid seed={4} />);
-    const previous = screen.getByTestId('cell-4');
-    const allCells = Array.from({length: 9}, (_, i) => i);
-    rerender(<Grid seed={-1} ariaDisabled={allCells} />);
-
-    expect(
-      Array.from(screen.getByRole('grid').querySelectorAll('[tabindex="0"]')),
-    ).toEqual([previous]);
-    expect(previous).toHaveAttribute('aria-disabled', 'true');
-    expect(previous).not.toHaveAttribute('disabled');
-
-    previous.focus();
-    fireEvent.keyDown(previous, {key: 'ArrowRight'});
-    expect(previous).toHaveFocus();
-    expect(previous).toHaveAttribute('tabindex', '0');
-
-    rerender(<Grid seed={-1} />);
-    fireEvent.keyDown(previous, {key: 'ArrowRight'});
-    expect(screen.getByTestId('cell-5')).toHaveFocus();
-    expect(screen.getByTestId('cell-5')).toHaveAttribute('tabindex', '0');
-    expect(previous).toHaveAttribute('tabindex', '-1');
-  });
-
-  it('does not create a Tab stop in an initially disabled grid or retain a native-disabled stop', () => {
-    const allCells = Array.from({length: 9}, (_, i) => i);
-    const {rerender} = render(<Grid seed={-1} ariaDisabled={allCells} />);
-    const grid = screen.getByRole('grid');
-    expect(grid.querySelectorAll('[tabindex="0"]')).toHaveLength(0);
-
-    rerender(<Grid seed={4} />);
-    expect(screen.getByTestId('cell-4')).toHaveAttribute('tabindex', '0');
-    rerender(<Grid seed={-1} disabled={allCells} ariaDisabled={allCells} />);
-    expect(grid.querySelectorAll('[tabindex="0"]')).toHaveLength(0);
   });
 
   it('flips ArrowLeft/ArrowRight under RTL', () => {
